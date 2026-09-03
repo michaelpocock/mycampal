@@ -31,11 +31,11 @@
   .legend .btn{white-space:nowrap}
   .legend .tag{white-space:nowrap}
   .stage-wrap{position:relative;flex:1 1 0;min-height:260px;display:flex;overflow:hidden}
-  .callout{position:absolute;left:0;top:0;width:140px;margin:0;pointer-events:none;opacity:0;transition:opacity .18s linear}
-  .callout .bubble{width:140px;height:140px;pointer-events:auto;border-radius:50%;overflow:hidden;border:5px solid var(--color-bg);box-shadow:var(--shadow-lg);background:var(--color-neutral-200)}
+  .callout{position:absolute;left:0;top:0;width:140px;margin:0;pointer-events:none;opacity:0;visibility:hidden;transition:opacity .18s linear}
+  .callout .bubble{width:140px;height:140px;pointer-events:none;border-radius:50%;overflow:hidden;border:5px solid var(--color-bg);box-shadow:var(--shadow-lg);background:var(--color-neutral-200);transform-origin:center;transition:transform .18s ease-out,box-shadow .18s ease-out}
+  .callout .bubble:hover{transform:scale(1.85);box-shadow:var(--shadow-lg),0 0 0 1px var(--color-neutral-300)}
+  .callout:has(.bubble:hover){z-index:4}
   .callout img{width:100%;height:100%;object-fit:cover;display:block;filter:saturate(.82) contrast(.96) brightness(1.03)}
-  .callout .slot-empty{width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:2px;font-size:13px;color:var(--color-neutral-700);background:var(--color-neutral-200)}
-  .callout .slot-empty span{font-size:11px;color:var(--color-neutral-600)}
   #pins .pin{position:absolute;left:0;top:0;width:30px;height:30px;border-radius:50%;background:var(--color-accent);color:var(--color-bg);font-family:var(--font-heading);font-size:15px;display:flex;align-items:center;justify-content:center;box-shadow:var(--shadow-sm);opacity:0;transition:opacity .25s;pointer-events:none}
   .callout .badge{position:absolute;left:-6px;top:-6px;z-index:2;width:36px;height:36px;border-radius:50%;background:var(--color-accent);color:var(--color-bg);font-family:var(--font-heading);font-size:17px;display:flex;align-items:center;justify-content:center;border:3px solid var(--color-bg);box-shadow:var(--shadow-sm)}
   .callout .dot{position:absolute;border-radius:50%;background:var(--color-bg);box-shadow:var(--shadow-sm)}
@@ -71,13 +71,13 @@
     </figure>
     <figure class="callout" data-drawer="2">
       <span class="badge">2</span>
-      <div class="bubble"><div class="slot-empty">Drawer 2<br><span>photo to come</span></div></div>
+      <div class="bubble"><img src="uploads/pasted-1788476671781-0.png" alt="Deep open storage crate with hand-hole cut-outs in the bottom-left drawer"></div>
       <div class="dot d1"></div>
       <div class="dot d2"></div>
     </figure>
     <figure class="callout" data-drawer="3">
       <span class="badge">3</span>
-      <div class="bubble"><div class="slot-empty">Drawer 3<br><span>photo to come</span></div></div>
+      <div class="bubble"><img src="uploads/pasted-1788475134979-0.png" alt="Pull-out tray with a collapsible washing-up bowl in the top-right drawer"></div>
       <div class="dot d1"></div>
       <div class="dot d2"></div>
     </figure>

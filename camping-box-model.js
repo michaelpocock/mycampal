@@ -47,8 +47,8 @@ function tube(name, r, len, x, y, z, mat, parent = model, axis = 'x') {
 }
 
 /* ---- dimensions (metres). +z = towards the tailgate, -z = towards the cab ---- */
-const W = 1.37, D = 0.98, H = 0.59, T = 0.018;   /* W = 1390 mm between the arches, less 10 mm clearance */
-const BOXZ = -0.13;   /* pushed forward so the front panel meets the rear seat backs */
+const W = 1.37, D = 0.85, H = 0.59, T = 0.018;   /* W = 1390 mm between the arches, less 10 mm clearance */
+const BOXZ = -0.065;   /* rear face stays butted to the tailgate end */
 
 /* ---- van: load bay of a Tourneo Custom, seen from the tailgate ---- */
 const VW = 1.76, VWA = 1.39, VH = 1.32, TAIL = 0.42, CAB = -2.32;
@@ -104,7 +104,7 @@ for (const [side, sx] of [['left', -1], ['right', 1]]) {
 }
 
 /* ---- removable pedestal table between the two left-hand seats ---- */
-const TBLZ = -1.35, TBLX = -0.46, TBL_H = 0.62;
+const TBLZ = -1.22, TBLX = -0.46, TBL_H = 0.62;
 const tableUnit = new THREE.Group(); tableUnit.name = 'pedestal_table'; model.add(tableUnit);
 box('table_base_board', 0.42, 0.018, 0.34, TBLX, 0.015, TBLZ, M.ply, tableUnit);
 for (const dx of [-0.15, 0.15]) {
@@ -160,7 +160,7 @@ function setTableStowed(stowed, bedside) {
 setTableStowed(false);
 
 /* ---- six fixed seats, two rows of three, facing the cab ---- */
-const ROWS = [['row2', -0.92], ['row1', -1.78]];
+const ROWS = [['row2', -0.79], ['row1', -1.65]];   /* moved back to meet the shallower box */
 const seatPivots = [];
 const seatGroups = {};
 const SEATX = [-0.46, 0, 0.46];
@@ -219,15 +219,44 @@ logoTex.colorSpace = THREE.SRGBColorSpace;
 const logoMat = new THREE.MeshBasicMaterial({ map: logoTex, transparent: true });
 logoMat.name = 'campal_logo';
 
+function pillPlate(name, w, h, thick, holeW, holeH, hcx, hcy, mat, parent) {
+  const shp = new THREE.Shape();
+  shp.moveTo(-w / 2, 0); shp.lineTo(w / 2, 0); shp.lineTo(w / 2, h); shp.lineTo(-w / 2, h); shp.lineTo(-w / 2, 0);
+  const r = holeH / 2, hp = new THREE.Path();
+  hp.moveTo(hcx - holeW / 2 + r, hcy - r);
+  hp.lineTo(hcx + holeW / 2 - r, hcy - r);
+  hp.absarc(hcx + holeW / 2 - r, hcy, r, -Math.PI / 2, Math.PI / 2, false);
+  hp.lineTo(hcx - holeW / 2 + r, hcy + r);
+  hp.absarc(hcx - holeW / 2 + r, hcy, r, Math.PI / 2, Math.PI * 1.5, false);
+  hp.closePath();
+  shp.holes.push(hp);
+  const mesh = new THREE.Mesh(new THREE.ExtrudeGeometry(shp, { depth: thick, bevelEnabled: false }), mat);
+  mesh.name = name;
+  parent.add(mesh);
+  return mesh;
+}
+
 function drawer(name, cx, out, kitchen) {
   const [baseY, dh] = BAYS[name];
   const g = new THREE.Group(); g.name = name;
   g.position.set(cx, baseY, out);
   const y = dh / 2;
   box(name + '_base', dW, T, dD, 0, T / 2, 0, M.ply, g);
-  box(name + '_side_left',  T, dh, dD, -dW / 2 + T / 2, y, 0, M.ply, g);
-  box(name + '_side_right', T, dh, dD,  dW / 2 - T / 2, y, 0, M.ply, g);
-  box(name + '_back', dW - 2 * T, dh, T, 0, y, -dD / 2 + T / 2, M.ply, g);
+  const crate = name === 'drawer_left_lower';
+  if (crate) {
+    for (const sx of [-1, 1]) {
+      const side2 = sx < 0 ? 'left' : 'right';
+      const p = pillPlate(name + '_side_' + side2, dD, dh, T, 0.13, 0.05, -0.06, dh - 0.055, M.ply, g);
+      p.rotation.y = Math.PI / 2;
+      p.position.set(sx < 0 ? -dW / 2 : dW / 2 - T, 0, 0);
+    }
+    const bk = pillPlate(name + '_back', dW - 2 * T, dh, T, 0.16, 0.05, 0, dh - 0.055, M.ply, g);
+    bk.position.set(0, 0, -dD / 2);
+  } else {
+    box(name + '_side_left',  T, dh, dD, -dW / 2 + T / 2, y, 0, M.ply, g);
+    box(name + '_side_right', T, dh, dD,  dW / 2 - T / 2, y, 0, M.ply, g);
+    box(name + '_back', dW - 2 * T, dh, T, 0, y, -dD / 2 + T / 2, M.ply, g);
+  }
   const fh = dh + 0.02;
   const frontPivot = new THREE.Group(); frontPivot.name = name + '_front_hinge';
   frontPivot.position.set(0, fh, D / 2 + 0.012); g.add(frontPivot);   /* hinged along its top edge, proud of the carcass */
@@ -277,6 +306,22 @@ function drawer(name, cx, out, kitchen) {
     box(name + '_lid_catch', 0.03, 0.03, 0.10, fw - 0.02, 0.02, 0, M.steel, fridgeLid);
   }
   model.add(g);
+  if (name === 'drawer_right_upper') {
+    /* flat pull-out tray with a collapsible washing-up bowl set into it */
+    const bz = 0.06, ribs = [[0.30, 0.24, 0.018, M.trim], [0.275, 0.215, 0.024, M.trim_dk],
+                             [0.245, 0.185, 0.024, M.trim_dk], [0.215, 0.155, 0.020, M.trim_dk]];
+    let y = dh - 0.008;
+    for (let i = 0; i < ribs.length; i++) {
+      const [w2, d2, h2, mat] = ribs[i];
+      y -= h2 / 2 + (i ? 0.002 : 0);
+      box(name + '_bowl_rib_' + (i + 1), w2, h2, d2, 0, y, bz, mat, g);
+      y -= h2 / 2;
+    }
+    box(name + '_bowl_base', 0.20, 0.014, 0.14, 0, y - 0.007, bz, M.trim_dk, g);
+    box(name + '_tray_stop', dW - 2 * T, 0.02, T, 0, dh - 0.01, -dD / 2 + T, M.ply_dark, g);
+    return { g, frontPivot, fridgeLid };
+  }
+  if (crate) return { g, frontPivot, fridgeLid };
   if (!kitchen) {
     box(name + '_tray_divider', T * 0.7, dh - 0.06, dD - 2 * T, -0.06, (dh - 0.06) / 2 + T, 0, M.ply_dark, g);
     return { g, frontPivot, fridgeLid };
@@ -638,7 +683,7 @@ if (pinHost) for (const d of drawerRefs) {
   d.el = el;
 }
 let frameRects = null;
-let latchedSide = null, latchedBase = null, latchedCount = 0;
+let latchedSide = null, latchedBase = null, latchedCount = 0, latchedCols = 0;
 function readRects() {
   const cv = stage.shadowRoot && stage.shadowRoot.querySelector('canvas');
   if (!cv || !wrap) { frameRects = null; return; }
@@ -685,24 +730,42 @@ const wrap = document.querySelector('.stage-wrap');
 const callouts = [...document.querySelectorAll('.callout')].map(el => ({
   el, n: +el.dataset.drawer, bub: el.querySelector('.bubble'),
 }));
+/* hovering a photo runs its own drawer out; leaving it shuts it again */
+for (const c of callouts) {
+  c.bub.addEventListener('pointerenter', () => {
+    stopSequence();
+    holdStill();
+    anim['d' + c.n].target = 1;
+    if (drawerBtn) drawerBtn.textContent = 'Close drawers';
+  });
+  c.bub.addEventListener('pointerleave', () => {
+    anim['d' + c.n].target = 0;
+    if (!anyDrawerOpen() && drawerBtn) drawerBtn.textContent = 'Open drawers';
+  });
+}
+
 function placeCallouts() {
   if (!callouts.length || !frameRects) return;
   const cam = stage._camera;
   if (!cam) return;
   const r = frameRects.r, w = frameRects.w;
   const pad = 8, off = 26;
-  const shown = callouts.filter(c => anim['d' + c.n].p > 0.35);
+  const shown = callouts.filter(c => bubblesPinned || anim['d' + c.n].p > 0.35);
 
   for (const c of callouts) {
-    if (!shown.includes(c) && c.lastOp !== '0') { c.el.style.opacity = '0'; c.lastOp = '0'; }
+    if (!shown.includes(c) && c.lastOp !== '0') {
+      c.el.style.opacity = '0';
+      c.el.style.visibility = 'hidden';
+      c.bub.style.pointerEvents = 'none';
+      c.lastOp = '0';
+    }
   }
   if (!shown.length) return;
 
   const [mx0, mx1] = projectedSpan(cam, r, w);
   const HINT = 46;                       /* the stage's own hint strip, bottom-left */
   const usableH = w.height - HINT;
-  const rows = Math.min(shown.length, 2);
-  const cols = Math.ceil(shown.length / rows);
+
 
   /* the side and the cell size are LATCHED: re-deciding them per frame made the
      grid jump sides and resize while the user was dragging */
@@ -715,13 +778,25 @@ function placeCallouts() {
     if (other > mine * 1.25 + 80) latchedSide = latchedSide === 'left' ? 'right' : 'left';
   }
   const useLeft = latchedSide === 'left';
-  const space = Math.max(120, useLeft ? leftSpace : rightSpace);
-  const byW = Math.floor((space - (cols - 1) * pad) / cols);
-  const byH = Math.floor((usableH - pad * (rows + 1)) / rows);
-  const want = Math.max(96, Math.min(186, byW, byH));
-  if (latchedBase === null || shown.length !== latchedCount || Math.abs(want - latchedBase) > 28) {
-    latchedBase = Math.round(want / 8) * 8;
+  const space = Math.max(110, useLeft ? leftSpace : rightSpace);
+
+  /* fit the grid to the room available BEFORE latching: two columns if they fit
+     at a sensible size, otherwise one — and never a cell wider than its column */
+  let rows = Math.min(shown.length, 2);
+  let cols = Math.ceil(shown.length / rows);
+  const sizeFor = (rw, cl) => Math.min(
+    Math.floor((space - (cl - 1) * pad) / cl),
+    Math.floor((usableH - pad * (rw + 1)) / rw));
+  if (cols > 1 && sizeFor(rows, cols) < 88) { rows = shown.length; cols = 1; }
+  const want = Math.max(56, Math.min(186, sizeFor(rows, cols)));
+  const fits = b => cols * (b + pad) - pad <= space && rows * (b + pad) - pad <= usableH;
+  if (latchedBase === null || shown.length !== latchedCount || cols !== latchedCols
+      || !fits(latchedBase) || Math.abs(want - latchedBase) > 28) {
+    let b = Math.floor(want / 8) * 8;
+    while (b > 56 && !fits(b)) b -= 8;
+    latchedBase = b;
     latchedCount = shown.length;
+    latchedCols = cols;
   }
   const base = latchedBase;
 
@@ -743,7 +818,18 @@ function placeCallouts() {
     const cy = Math.min(pad + row * (base + pad), Math.max(pad, usableH - s - pad));
     const tf = 'translate(' + Math.round(cx) + 'px,' + Math.round(cy) + 'px)';
     if (c.lastTf !== tf) { c.el.style.transform = tf; c.lastTf = tf; }
-    if (c.lastOp !== '1') { c.el.style.opacity = '1'; c.lastOp = '1'; }
+    /* grow the hover zoom inward, so an edge cell is never clipped */
+    const head = Math.ceil(0.43 * s);
+    const ox = cx < head ? 'left' : (w.width - (cx + s) < head ? 'right' : 'center');
+    const oy = cy < head ? 'top' : (w.height - (cy + s) < head ? 'bottom' : 'center');
+    const org = ox + ' ' + oy;
+    if (c.lastOrg !== org) { c.bub.style.transformOrigin = org; c.lastOrg = org; }
+    if (c.lastOp !== '1') {
+      c.el.style.visibility = 'visible';
+      c.el.style.opacity = '1';
+      c.bub.style.pointerEvents = 'auto';
+      c.lastOp = '1';
+    }
   }
 }
 
@@ -806,6 +892,7 @@ function setDrawers(t) { for (const d of drawerRefs) anim['d' + d.n].target = t;
 function anyDrawerOpen() { return drawerRefs.some(d => anim['d' + d.n].target === 1); }
 
 let seqTimers = [];
+let bubblesPinned = false;
 function stopSequence() { for (const t of seqTimers) clearTimeout(t); seqTimers = []; }
 function holdStill() {
   userOrbiting = false;
@@ -822,12 +909,20 @@ function runDrawerSequence() {
     seqTimers.push(setTimeout(() => { a.target = 1; }, i * STEP));
     seqTimers.push(setTimeout(() => { a.target = 0; }, i * STEP + OPEN_MS + HOLD));
   });
-  seqTimers.push(setTimeout(() => setDrawers(1), drawerRefs.length * STEP));
+  const finale = drawerRefs.length * STEP;
+  seqTimers.push(setTimeout(() => setDrawers(1), finale));
+  /* shut them again but leave the reference photos on screen */
+  seqTimers.push(setTimeout(() => {
+    setDrawers(0);
+    bubblesPinned = true;
+    if (drawerBtn) drawerBtn.textContent = 'Open drawers';
+  }, finale + OPEN_MS + 1600));
 }
 
 if (drawerBtn) drawerBtn.addEventListener('click', () => {
   stopDemo();
   stopSequence();
+  bubblesPinned = false;
   if (anyDrawerOpen()) {
     setDrawers(0);
     drawerBtn.textContent = 'Open drawers';
@@ -876,6 +971,7 @@ if (doorsBtn) doorsBtn.addEventListener('click', () => {
   if (anim.doors.target === 0) {
     stopDemo();
     stopSequence();
+    bubblesPinned = false;
     setDrawers(0);   /* nothing can be left sticking out of a shut van */
     if (drawerBtn) drawerBtn.textContent = 'Open drawers';
   }
@@ -944,16 +1040,19 @@ if (seatsOutBtn) seatsOutBtn.addEventListener('click', () => {
 
 let tableStowed = false;
 function applyTableMode() {
-  const bedside = anim.recline.target === 1;
-  setTableStowed(tableStowed && !bedside, bedside);
-  tableUnit.visible = vanSolid.visible || !tableStowed || bedside;
-  if (tableBtn) tableBtn.textContent = (tableStowed && !bedside) ? 'Set up table' : 'Stow table';
+  /* stowing wins in every mode — in the lounger it takes the bedside table away too */
+  const bedside = anim.recline.target === 1 && !tableStowed;
+  setTableStowed(tableStowed, bedside);
+  tableUnit.visible = vanSolid.visible || !tableStowed;
+  if (tableBtn) tableBtn.textContent = tableStowed ? 'Set up table' : 'Stow table';
 }
 const tableBtn = document.getElementById('table-toggle');
 if (tableBtn) tableBtn.addEventListener('click', () => {
   tableStowed = !tableStowed;
   applyTableMode();
-  if (!tableStowed) {           /* the table needs the floor the bed sits over */
+  /* setting up on the floor needs the bed away — but the bedside table lives
+     with the lounger, so leave the bed alone there */
+  if (!tableStowed && anim.recline.target !== 1) {
     stopDemo();
     anim.bed.target = 1;
     labels();
