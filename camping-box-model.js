@@ -9,7 +9,19 @@ const M = {
   accent:   new THREE.MeshStandardMaterial({ color: 0x1b1a19, roughness: 0.5, metalness: 0.06 }),
   steel:    new THREE.MeshStandardMaterial({ color: 0xb9b7b2, roughness: 0.35, metalness: 0.35 }),
   cushion:  new THREE.MeshStandardMaterial({ color: 0xd2d0cb, roughness: 0.95, metalness: 0.0 }),
-  cushion_edge: new THREE.MeshStandardMaterial({ color: 0x7a8a5e, roughness: 0.95, metalness: 0.0 }),
+  cushion_face: new THREE.MeshStandardMaterial({ color: 0x555f80, roughness: 0.95, metalness: 0.0 }),
+  skin:     new THREE.MeshStandardMaterial({ color: 0xe3b795, roughness: 0.8, metalness: 0.0 }),
+  hair:     new THREE.MeshStandardMaterial({ color: 0x8d7256, roughness: 0.9, metalness: 0.0 }),
+  tee:      new THREE.MeshStandardMaterial({ color: 0x232323, roughness: 0.9, metalness: 0.0 }),
+  shorts:   new THREE.MeshStandardMaterial({ color: 0x8b8567, roughness: 0.9, metalness: 0.0 }),
+  sweat:    new THREE.MeshStandardMaterial({ color: 0xc7cad1, roughness: 0.95, metalness: 0.0 }),
+  jeans:    new THREE.MeshStandardMaterial({ color: 0x5b7098, roughness: 0.9, metalness: 0.0 }),
+  eye:      new THREE.MeshStandardMaterial({ color: 0x2b2724, roughness: 0.4, metalness: 0.0 }),
+  mouth:    new THREE.MeshStandardMaterial({ color: 0xa8635c, roughness: 0.7, metalness: 0.0 }),
+  card:     new THREE.MeshStandardMaterial({ color: 0xf2efe6, roughness: 0.6, metalness: 0.0 }),
+  wine:     new THREE.MeshStandardMaterial({ color: 0x6d1f33, roughness: 0.25, metalness: 0.0 }),
+  crystal:  new THREE.MeshStandardMaterial({ color: 0xdfe6e8, roughness: 0.1, metalness: 0.1, transparent: true, opacity: 0.45 }),
+  cushion_edge: new THREE.MeshStandardMaterial({ color: 0xb3ab73, roughness: 0.95, metalness: 0.0 }),
   stove:    new THREE.MeshStandardMaterial({ color: 0x24211f, roughness: 0.45, metalness: 0.3 }),
   latch:    new THREE.MeshStandardMaterial({ color: 0x2f5fd0, roughness: 0.4, metalness: 0.15 }),
   worktop:  new THREE.MeshStandardMaterial({ color: 0x2e2b28, roughness: 0.7,  metalness: 0.1 }),
@@ -144,11 +156,12 @@ function setLeafFold(p) {
 const STOW_Z = -2.26 - TBLZ, POST_X = -0.75 - TBLX, POST_Z = -2.14 - TBLZ;
 const BEDSIDE_TOP_Y = 0.88, BEDSIDE_TOP_SX = 0.42 * 0.92 / TBL_W;
 const BS_TOP_HALF = TBL_W * BEDSIDE_TOP_SX / 2;
-const BS_POST_X = 0.78 - TBLX, BS_Z = -0.85 - TBLZ;   /* beside the bed, as far forward as the raised backrest allows */
+const BS_POST_X = 0.78 - TBLX, BS_Z = -0.31 - TBLZ;   /* beside the bed, on the arch top, aligned with the cushion joint */
+const BS_BASE_Y = 0.31;   /* stands on the wheel-arch top, not the load floor */
 function setTableStowed(stowed, bedside) {
   /* the floor board belongs to the between-seats pose only */
   tableBoard.visible = !bedside;
-  tTop.scale.set(1, 1, 1); tEdge.scale.set(1, 1, 1); tPost.scale.set(1, 1, 1);
+  tTop.scale.set(1, 1, 1); tEdge.scale.set(1, 1, 1); tPost.scale.set(1, 1, 1); tPlate.scale.set(1, 1, 1);
   tTop.rotation.x = 0; tEdge.rotation.x = 0; tPlate.rotation.x = 0;
   /* the second post and the hinged leaf only serve the set-up pose */
   tPost2.visible = tFoot2.visible = !stowed && !bedside;
@@ -163,10 +176,11 @@ function setTableStowed(stowed, bedside) {
   }
   if (bedside) {
     /* longer post up beside the bed, small dark top cantilevered over the mattress */
-    const len = BEDSIDE_TOP_Y - 0.05;
-    tPost.scale.y = len / (TBL_H - 0.05);
-    tPost.position.set(BS_POST_X, 0.036 + len / 2, BS_Z);
-    tFoot.position.set(BS_POST_X, 0.030, BS_Z);
+    const len = BEDSIDE_TOP_Y - 0.026 - BS_BASE_Y;
+    tPost.scale.set(0.6, len / (TBL_H - 0.05), 0.6);   /* slim enough to pass through the cushion joint */
+    tPost.position.set(BS_POST_X, BS_BASE_Y + 0.012 + len / 2, BS_Z);
+    tFoot.position.set(BS_POST_X, BS_BASE_Y + 0.006, BS_Z);
+    tPlate.scale.set(0.5, 1, 0.5);
     tTop.material = M.worktop;
     tTop.scale.set(BEDSIDE_TOP_SX, 1, 1);
     tTop.position.set(BS_POST_X - BS_TOP_HALF, BEDSIDE_TOP_Y, BS_Z);
@@ -523,7 +537,8 @@ function panel(name, len, zCenter, y, parent) {
     /* infill cushion out to the van wall — posed from setFold so it never
        sweeps through the mattress when the flap folds up */
     const sc = new THREE.Mesh(
-      new THREE.BoxGeometry(FLAP_W - 0.008, cT, len - 0.04), M.cushion_edge);
+      new THREE.BoxGeometry(FLAP_W - 0.008, cT, len - 0.04),
+      [M.cushion_edge, M.cushion_edge, M.cushion_face, M.cushion_face, M.cushion_edge, M.cushion_edge]);
     sc.name = name.replace('bed_panel', 'side_cushion') + '_' + side;
     sc.position.set(sx * (bedW / 2 + FLAP_W / 2), y + pT / 2 + cT / 2 + 0.002, zCenter);
     g.add(sc);
@@ -551,6 +566,146 @@ const frontPivot = new THREE.Group(); frontPivot.name = 'bed_front_recline';
 frontPivot.position.set(0, 0, 0); pivotB.add(frontPivot);
 panel('bed_panel_front', pL, -pL / 2, 0, frontPivot);
 
+/* ---- the two of us, lying on the lounger: schematic figures, heads on the raised backrest.
+       The upper body rides the reclining panel, the legs stay on the flat panels. ---- */
+const MSURF = pT / 2 + cT + 0.012;
+const occupants = [];
+function person(tag, x, kit) {
+  const up = new THREE.Group(); up.name = 'person_' + tag + '_upper'; frontPivot.add(up);
+  box('person_' + tag + '_torso', 0.36, 0.17, 0.44, x, MSURF + 0.085, -0.27, kit.top, up);
+  box('person_' + tag + '_neck', 0.10, 0.10, 0.06, x, MSURF + 0.085, -0.52, kit.skin, up);
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.093, 20, 16), kit.skin);
+  head.name = 'person_' + tag + '_head';
+  head.position.set(x, MSURF + 0.095, -0.60); up.add(head);
+  const hair = new THREE.Mesh(new THREE.SphereGeometry(0.096, 20, 16, 0, Math.PI * 2, 0, Math.PI * 0.55), M.hair);
+  hair.name = 'person_' + tag + '_hair';
+  hair.position.set(x, MSURF + 0.095, -0.60);
+  hair.rotation.x = Math.PI - 0.55;   /* cap on the back of the head, so the face looks up */
+  hair.visible = !!kit.hair && !kit.longHair; up.add(hair);
+  if (kit.longHair) {
+    /* a full head of hair, front to back, open only where her face looks up */
+    const shell = new THREE.Mesh(new THREE.SphereGeometry(0.103, 26, 20, 0, Math.PI * 2, 0.8, Math.PI - 0.8), M.hair);
+    shell.name = 'person_' + tag + '_hair_shell';
+    shell.position.set(x, MSURF + 0.093, -0.60);
+    shell.scale.set(1, 1, 1.12); up.add(shell);
+    const mane = new THREE.Mesh(new THREE.SphereGeometry(0.10, 20, 16), M.hair);
+    mane.name = 'person_' + tag + '_hair_long';
+    mane.position.set(x, MSURF + 0.045, -0.56);
+    mane.scale.set(1.35, 0.42, 1.7);   /* spread out on the cushion behind her head */
+    up.add(mane);
+    const fringe = new THREE.Mesh(new THREE.SphereGeometry(0.075, 18, 14), M.hair);
+    fringe.name = 'person_' + tag + '_fringe';
+    fringe.position.set(x, MSURF + 0.150, -0.655);
+    fringe.scale.set(1.15, 0.5, 0.85);   /* hair forward over the top of her face */
+    up.add(fringe);
+  }
+  /* face, looking up */
+  for (const sx of [-1, 1]) {
+    const eye = new THREE.Mesh(new THREE.SphereGeometry(0.013, 12, 10), M.eye);
+    eye.name = 'person_' + tag + '_eye_' + (sx < 0 ? 'left' : 'right');
+    eye.position.set(x + sx * 0.034, MSURF + 0.180, -0.618);
+    eye.scale.set(1, 0.6, 1); up.add(eye);
+  }
+  const mouth = new THREE.Mesh(new THREE.SphereGeometry(0.020, 14, 10), M.mouth);
+  mouth.name = 'person_' + tag + '_mouth';
+  mouth.position.set(x, MSURF + 0.176, -0.556);
+  mouth.scale.set(1.5, 0.35, 0.7); up.add(mouth);
+  for (const sx of [-1, 1]) {
+    const s = sx < 0 ? 'left' : 'right';
+    box('person_' + tag + '_arm_' + s, 0.085, 0.085, 0.42, x + sx * 0.225, MSURF + 0.045, -0.25, kit.top, up);
+    box('person_' + tag + '_hand_' + s, 0.075, 0.055, 0.10, x + sx * 0.225, MSURF + 0.030, 0.00, kit.skin, up);
+  }
+  const lo = new THREE.Group(); lo.name = 'person_' + tag + '_lower'; pivotB.add(lo);
+  box('person_' + tag + '_hips', 0.34, 0.15, 0.22, x, MSURF + 0.075, 0.10, kit.legs, lo);
+  for (const sx of [-1, 1]) {
+    const s = sx < 0 ? 'left' : 'right';
+    box('person_' + tag + '_thigh_' + s, 0.135, 0.135, 0.38, x + sx * 0.085, MSURF + 0.068, 0.40, kit.legs, lo);
+    box('person_' + tag + '_shin_' + s, 0.115, 0.115, 0.42, x + sx * 0.085, MSURF + 0.058, 0.80, kit.shin, lo);
+    box('person_' + tag + '_foot_' + s, 0.115, 0.075, 0.11, x + sx * 0.085, MSURF + 0.038, 1.06, M.trim_dk, lo);
+  }
+  occupants.push(up, lo);
+  if (kit.h) { up.scale.z = kit.h; lo.scale.z = kit.h; }
+}
+person('a', -0.34, { top: M.tee, legs: M.shorts, shin: M.skin, skin: M.skin, hair: true });
+person('b', 0.34, { top: M.sweat, legs: M.jeans, shin: M.jeans, skin: M.skin, hair: true, longHair: true, h: 0.88 });
+for (const g of occupants) g.visible = false;
+
+/* ---- the same two, sat in the permanent left-hand seats when the bed is folded away ---- */
+const seated = [];
+function seatedPerson(tag, seatTag, kit) {
+  const gs = seatGroups[seatTag];
+  if (!gs) return;
+  const g = new THREE.Group(); g.name = 'seated_' + tag; gs.add(g);
+  box('seated_' + tag + '_hips', 0.34, 0.16, 0.28, 0, 0.55, 0.03, kit.legs, g);
+  box('seated_' + tag + '_torso', 0.36, 0.46, 0.20, 0, 0.81, 0.10, kit.top, g);
+  box('seated_' + tag + '_neck', 0.10, 0.06, 0.10, 0, 1.05, 0.07, kit.skin, g);
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.093, 20, 16), kit.skin);
+  head.name = 'seated_' + tag + '_head'; head.position.set(0, 1.14, 0.06); g.add(head);
+  if (kit.longHair) {
+    const shell = new THREE.Mesh(new THREE.SphereGeometry(0.103, 26, 20, 0, Math.PI * 2, 1.15, Math.PI - 1.15), M.hair);
+    shell.name = 'seated_' + tag + '_hair_shell';
+    shell.position.set(0, 1.14, 0.09); shell.rotation.x = Math.PI / 2; shell.scale.set(1, 1.12, 1); g.add(shell);
+  } else {
+    const cap = new THREE.Mesh(new THREE.SphereGeometry(0.096, 20, 16, 0, Math.PI * 2, 0, Math.PI * 0.55), M.hair);
+    cap.name = 'seated_' + tag + '_hair'; cap.position.set(0, 1.14, 0.07); cap.rotation.x = 0.55; g.add(cap);
+  }
+  for (const sx of [-1, 1]) {
+    const s = sx < 0 ? 'left' : 'right';
+    const eye = new THREE.Mesh(new THREE.SphereGeometry(0.013, 12, 10), M.eye);
+    eye.name = 'seated_' + tag + '_eye_' + s;
+    eye.position.set(sx * 0.034, 1.155, -0.028); eye.scale.set(1, 1, 0.6); g.add(eye);
+    box('seated_' + tag + '_arm_' + s, 0.085, 0.28, 0.085, sx * 0.225, 0.86, 0.06, kit.top, g);
+    /* forearm bridging elbow to hand, aimed along its own axis so the joints meet */
+    const elbow = new THREE.Vector3(sx * 0.225, 0.725, 0.06);
+    const wrist = new THREE.Vector3(sx * 0.085, 0.885, -0.215);
+    const d = wrist.clone().sub(elbow);
+    const fa = box('seated_' + tag + '_forearm_' + s, 0.075, 0.075, d.length(), 0, 0, 0, kit.top, g);
+    fa.position.copy(elbow).add(d.clone().multiplyScalar(0.5));
+    fa.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), d.clone().normalize());
+    box('seated_' + tag + '_hand_' + s, 0.070, 0.055, 0.095, sx * 0.085, 0.895, -0.245, kit.skin, g);
+    const lx = kit.legDX || 0.085;
+    box('seated_' + tag + '_thigh_' + s, 0.135, 0.135, 0.28, sx * lx, 0.555, -0.11, kit.legs, g);
+    box('seated_' + tag + '_shin_' + s, 0.115, 0.40, 0.115, sx * lx, 0.30, -0.28, kit.shin, g);
+    box('seated_' + tag + '_foot_' + s, 0.115, 0.07, 0.20, sx * lx, 0.075, -0.34, M.trim_dk, g);
+  }
+  const mouth = new THREE.Mesh(new THREE.SphereGeometry(0.020, 14, 10), M.mouth);
+  mouth.name = 'seated_' + tag + '_mouth';
+  mouth.position.set(0, 1.095, -0.030); mouth.scale.set(1.5, 0.7, 0.35); g.add(mouth);
+  if (kit.h) g.scale.set(1, kit.h, 1);
+  /* a fan of cards held up in front of the chest */
+  const fan = new THREE.Group(); fan.name = 'seated_' + tag + '_cards';
+  fan.position.set(0, 0.925, -0.245); fan.rotation.x = -0.6; g.add(fan);
+  for (let i = 0; i < 5; i++) {
+    const c = box('seated_' + tag + '_card_' + (i + 1), 0.055, 0.002, 0.085, 0, i * 0.0025, 0, M.card, fan);
+    c.rotation.y = (i - 2) * 0.16;
+    c.position.x = (i - 2) * 0.022;
+  }
+  g.visible = false;
+  seated.push(g);
+}
+seatedPerson('mike', 'row2_1', { top: M.tee, legs: M.shorts, shin: M.skin, skin: M.skin });
+seatedPerson('julia', 'row1_1', { top: M.sweat, legs: M.jeans, shin: M.jeans, skin: M.skin, longHair: true, h: 0.93, legDX: 0.23 });
+
+/* the game and the wine, on the table between the two seats */
+const tableProps = new THREE.Group(); tableProps.name = 'cards_and_wine';
+tableParts.add(tableProps);
+const TT = TBL_H + 0.009;
+for (const [tag, dx, dz] of [['mike', -0.11, 0.07], ['julia', 0.11, -0.07]]) {
+  const gx = HALF_DX + dx, gz = dz;
+  tube('wine_glass_' + tag + '_base', 0.030, 0.006, gx, TT + 0.003, gz, M.crystal, tableProps, 'y');
+  tube('wine_glass_' + tag + '_stem', 0.005, 0.085, gx, TT + 0.048, gz, M.crystal, tableProps, 'y');
+  tube('wine_glass_' + tag + '_bowl', 0.035, 0.080, gx, TT + 0.131, gz, M.crystal, tableProps, 'y');
+  tube('wine_' + tag, 0.031, 0.038, gx, TT + 0.110, gz, M.wine, tableProps, 'y');
+}
+tube('wine_bottle_body', 0.038, 0.230, HALF_DX + 0.02, TT + 0.115, 0.00, M.wine, tableProps, 'y');
+tube('wine_bottle_neck', 0.014, 0.090, HALF_DX + 0.02, TT + 0.272, 0.00, M.wine, tableProps, 'y');
+for (let i = 0; i < 6; i++) {
+  const c = box('table_card_' + (i + 1), 0.058, 0.002, 0.088, HALF_DX - 0.20, TT + 0.001 + i * 0.0022, -0.02, M.card, tableProps);
+  c.rotation.y = (i - 3) * 0.09;
+}
+tableProps.visible = false;
+seated.push(tableProps);
+
 const legs = new THREE.Group(); legs.name = 'bed_legs';
 legs.position.set(0, -pT / 2, -pL + 0.10); pivotB.add(legs);
 for (const sx of [-1, 1]) {
@@ -571,7 +726,7 @@ const RAISE = 0.36;
 const cushions = ['rear', 'mid', 'front'].map((tag, i) => {
   const c = new THREE.Mesh(
     new THREE.BoxGeometry(bedW - 0.02, cT, pL - 0.03),
-    [M.cushion_edge, M.cushion_edge, M.cushion, M.cushion, M.cushion_edge, M.cushion_edge]);
+    [M.cushion_edge, M.cushion_edge, M.cushion_face, M.cushion_face, M.cushion_edge, M.cushion_edge]);
   c.name = 'cushion_' + tag;
   c.position.set(0, CUSHION_Y, hingeA + pL / 2 - i * pL);
   bed.add(c);
@@ -584,10 +739,13 @@ const smooth = t => t * t * (3 - 2 * t);
 /* f = 0 unfolded over the seats, 1 folded flat on the deck.
    0–0.25 cushions lift off · 0.25–0.75 the wood folds · 0.75–1 cushions land on top */
 let folded = 1;
+let peopleShown = true;
 let reclined = 0;
 function setFold(f) {
   const fp = clamp01((f - 0.25) / 0.5);
   folded = fp;
+  for (const g of seated) g.visible = peopleShown && f > 0.98;
+  for (const g of occupants) g.visible = peopleShown && fp < 0.02;
   const th = Math.PI * fp, k = (1 - Math.cos(th)) / 2;
   pivotA.rotation.x = th; pivotA.position.y = bedY + LIFT * k;
   pivotB.rotation.x = -th; pivotB.position.y = -LIFT * k;   /* reverse fold — the top panel lands face-up */
@@ -624,6 +782,7 @@ function setRecline(r) {
   const th = RECLINE * r;
   reclined = r;
   frontPivot.rotation.x = th;
+  for (const g of occupants) g.visible = peopleShown && folded < 0.02;
   legs.visible = folded < 0.8 && r < 0.5;   /* the far pair has nothing to stand under once the panel is up */
   if (folded > 0.001) return;   /* folded away — setFold owns the cushion stack */
   const c = cushions[2];
@@ -1022,6 +1181,15 @@ if (loungeBtn) loungeBtn.addEventListener('click', () => {
   }
   applyTableMode();
   labels();
+});
+
+const peopleBtn = document.getElementById('people-toggle');
+if (peopleBtn) peopleBtn.addEventListener('click', () => {
+  peopleShown = !peopleShown;
+  peopleBtn.textContent = peopleShown ? 'Hide Julia & Mike' : 'Show Julia & Mike';
+  setRecline(reclined);
+  for (const g of seated) g.visible = peopleShown && anim.bed.p > 0.98 && anim.bed.target === 1;
+  for (const g of occupants) g.visible = peopleShown && folded < 0.02;
 });
 
 const drawerBtn = document.getElementById('drawer-toggle');
