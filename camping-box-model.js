@@ -105,32 +105,54 @@ for (const [side, sx] of [['left', -1], ['right', 1]]) {
 
 /* ---- removable pedestal table between the two left-hand seats ---- */
 const TBLZ = -1.22, TBLX = -0.46, TBL_H = 0.62;
+const TBL_W = 1.36, LEGDX = 0.34;   /* as wide as the three seats it faces, on two posts */
 const tableUnit = new THREE.Group(); tableUnit.name = 'pedestal_table'; model.add(tableUnit);
 const tableBoard = new THREE.Group(); tableBoard.name = 'table_floor_board'; tableUnit.add(tableBoard);
-box('table_base_board', 0.42, 0.018, 0.34, TBLX, 0.015, TBLZ, M.ply, tableBoard);
-for (const dx of [-0.15, 0.15]) {
-  box('velcro_strip_' + (dx < 0 ? 'left' : 'right'), 0.075, 0.006, 0.30, TBLX + dx, 0.003, TBLZ, M.stove, tableBoard);
+box('table_base_board', TBL_W, 0.018, 0.34, 0, 0.015, TBLZ, M.ply, tableBoard);
+for (const dx of [-0.34, 0.34]) {
+  box('velcro_strip_' + (dx < 0 ? 'left' : 'right'), 0.075, 0.006, 0.30, dx, 0.003, TBLZ, M.stove, tableBoard);
 }
 /* post and top lift off the board as one piece */
 const tableParts = new THREE.Group(); tableParts.name = 'table_post_and_top';
 tableParts.position.set(TBLX, 0, TBLZ); tableUnit.add(tableParts);
-const TOPDX = 0.07;   /* nudged inboard so the wide top clears the van wall */
+const TOPDX = 0.46;   /* top centred on the van's centreline */
 const tFoot = box('table_foot_plate', 0.16, 0.012, 0.16, 0, 0.030, 0, M.steel, tableParts);
 const tPost = tube('table_post', 0.030, TBL_H - 0.05, 0, 0.036 + (TBL_H - 0.05) / 2, 0, M.steel, tableParts, 'y');
+const tFoot2 = box('table_foot_plate_2', 0.16, 0.012, 0.16, 0, 0.030, 0, M.steel, tableParts);
+const tPost2 = tube('table_post_2', 0.030, TBL_H - 0.05, 0, 0.036 + (TBL_H - 0.05) / 2, 0, M.steel, tableParts, 'y');
 const tPlate = box('table_top_plate', 0.18, 0.012, 0.18, TOPDX, TBL_H - 0.019, 0, M.steel, tableParts);
-const tTop = box('table_top', 0.92, 0.018, 0.32, TOPDX, TBL_H, 0, M.ply, tableParts);
-const tEdge = box('table_top_edge', 0.92, 0.010, 0.010, TOPDX, TBL_H - 0.008, 0.16, M.stove, tableParts);
+const tTop = box('table_top', TBL_W, 0.018, 0.32, TOPDX, TBL_H, 0, M.ply, tableParts);
+const tEdge = box('table_top_edge', TBL_W, 0.010, 0.010, TOPDX, TBL_H - 0.008, 0.16, M.stove, tableParts);
+/* set up, the top is a fixed half plus a hinged leaf that folds back over it
+   when only the two left-hand seats are fitted */
+const HALF_W = TBL_W / 2, HALF_DX = TOPDX - HALF_W / 2;
+const tLeafPivot = new THREE.Group(); tLeafPivot.name = 'table_leaf_hinge';
+tableParts.add(tLeafPivot);
+box('table_leaf', HALF_W, 0.018, 0.32, HALF_W / 2, 0, 0, M.ply, tLeafPivot);
+box('table_leaf_edge', HALF_W, 0.010, 0.010, HALF_W / 2, -0.008, 0.16, M.stove, tLeafPivot);
+tLeafPivot.visible = false;
+let leafP = 0;
+function setLeafFold(p) {
+  leafP = p;
+  tLeafPivot.rotation.z = Math.PI * p;
+  tLeafPivot.position.set(TOPDX, TBL_H + 0.020 * p, 0);
+  if (tLeafPivot.visible) tPost2.visible = tFoot2.visible = p < 0.5;
+}
 
 /* three poses: set up on its board, stowed behind the seats, or run up
    through the bed platform as a bedside table when the lounger is out */
 const STOW_Z = -2.26 - TBLZ, POST_X = -0.75 - TBLX, POST_Z = -2.14 - TBLZ;
-const BEDSIDE_TOP_Y = 0.88, BEDSIDE_TOP_SX = 0.42;
-const BS_POST_X = 0.78 - TBLX, BS_Z = -0.76 - TBLZ;   /* beside the bed, back towards the tailgate, clear of the wheel arch */
+const BEDSIDE_TOP_Y = 0.88, BEDSIDE_TOP_SX = 0.42 * 0.92 / TBL_W;
+const BS_TOP_HALF = TBL_W * BEDSIDE_TOP_SX / 2;
+const BS_POST_X = 0.78 - TBLX, BS_Z = -0.85 - TBLZ;   /* beside the bed, as far forward as the raised backrest allows */
 function setTableStowed(stowed, bedside) {
   /* the floor board belongs to the between-seats pose only */
   tableBoard.visible = !bedside;
   tTop.scale.set(1, 1, 1); tEdge.scale.set(1, 1, 1); tPost.scale.set(1, 1, 1);
   tTop.rotation.x = 0; tEdge.rotation.x = 0; tPlate.rotation.x = 0;
+  /* the second post and the hinged leaf only serve the set-up pose */
+  tPost2.visible = tFoot2.visible = !stowed && !bedside;
+  tLeafPivot.visible = !stowed && !bedside;
   if (stowed) {
     tTop.rotation.x = -Math.PI / 2; tTop.position.set(TOPDX, 0.30, STOW_Z);
     tEdge.rotation.x = -Math.PI / 2; tEdge.position.set(TOPDX, 0.46, STOW_Z + 0.012);
@@ -147,18 +169,23 @@ function setTableStowed(stowed, bedside) {
     tFoot.position.set(BS_POST_X, 0.030, BS_Z);
     tTop.material = M.worktop;
     tTop.scale.set(BEDSIDE_TOP_SX, 1, 1);
-    tTop.position.set(BS_POST_X - 0.19, BEDSIDE_TOP_Y, BS_Z);
+    tTop.position.set(BS_POST_X - BS_TOP_HALF, BEDSIDE_TOP_Y, BS_Z);
     tPlate.position.set(BS_POST_X, BEDSIDE_TOP_Y - 0.019, BS_Z);
     tEdge.scale.set(BEDSIDE_TOP_SX, 1, 1);
-    tEdge.position.set(BS_POST_X - 0.19, BEDSIDE_TOP_Y - 0.008, BS_Z + 0.16);
+    tEdge.position.set(BS_POST_X - BS_TOP_HALF, BEDSIDE_TOP_Y - 0.008, BS_Z + 0.16);
     return;
   }
   tTop.material = M.ply;
-  tTop.position.set(TOPDX, TBL_H, 0);
-  tEdge.position.set(TOPDX, TBL_H - 0.008, 0.16);
-  tPlate.position.set(TOPDX, TBL_H - 0.019, 0);
-  tPost.position.set(0, 0.036 + (TBL_H - 0.05) / 2, 0);
-  tFoot.position.set(0, 0.030, 0);
+  /* the fixed half; the leaf carries the other half on its hinge */
+  tTop.scale.set(0.5, 1, 1); tEdge.scale.set(0.5, 1, 1);
+  tTop.position.set(HALF_DX, TBL_H, 0);
+  tEdge.position.set(HALF_DX, TBL_H - 0.008, 0.16);
+  tPlate.position.set(HALF_DX, TBL_H - 0.019, 0);
+  tPost.position.set(TOPDX - LEGDX, 0.036 + (TBL_H - 0.05) / 2, 0);
+  tFoot.position.set(TOPDX - LEGDX, 0.030, 0);
+  tPost2.position.set(TOPDX + LEGDX, 0.036 + (TBL_H - 0.05) / 2, 0);
+  tFoot2.position.set(TOPDX + LEGDX, 0.030, 0);
+  setLeafFold(leafP);
 }
 setTableStowed(false);
 
@@ -720,6 +747,7 @@ const anim = {
   d3: { p: 0, target: 0, ms: 900, apply: p => setOut(drawerRefs[2], ease(p) * OPEN) },
   d4: { p: 0, target: 0, ms: 900, apply: p => setOut(drawerRefs[3], ease(p) * OPEN) },
   d5: { p: 0, target: 0, ms: 1600, apply: p => setDoor(ease(p)) },
+  leaf: { p: 0, target: 0, ms: 1100, apply: p => setLeafFold(ease(p)) },
   bed:    { p: 1, target: 1, ms: 2200, apply: p => setFold(ease(p)) },
   flaps:  { p: 1, target: 1, ms: 900, apply: p => setFlaps(ease(p)) },
   seats:  { p: 0, target: 0, ms: 1400, apply: p => setSeatBacks(ease(p)) },
@@ -990,6 +1018,7 @@ if (loungeBtn) loungeBtn.addEventListener('click', () => {
   if (anim.recline.target === 1) {   /* the bed has to be down and flat first */
     anim.bed.target = 0;
     anim.seats.target = 1;
+    tableStowed = false;             /* the bedside table comes out with the lounger */
   }
   applyTableMode();
   labels();
@@ -1156,7 +1185,9 @@ if (seatsOutBtn) seatsOutBtn.addEventListener('click', () => {
   const out = seatGroups[REMOVABLE[0]].visible;   /* currently in → take them out */
   for (const k of REMOVABLE) { const g = seatGroups[k]; if (g) g.visible = !out; }
   seatsOutBtn.textContent = out ? 'Refit 4 seats' : 'Remove 4 seats';
+  anim.leaf.target = out ? 1 : 0;   /* the table folds in half for the two-seat layout */
   if (frontSeatsBtn) frontSeatsBtn.style.display = out ? 'none' : '';
+  applyTableMode();
   updateVisBox();
   reframe();
 });
@@ -1165,6 +1196,7 @@ let tableStowed = false;
 function applyTableMode() {
   /* stowing wins in every mode — in the lounger it takes the bedside table away too */
   const bedside = anim.recline.target === 1 && !tableStowed;
+  /* only the two left-hand seats fitted → the table folds in half */
   setTableStowed(tableStowed, bedside);
   tableUnit.visible = vanSolid.visible || !tableStowed;
   if (tableBtn) tableBtn.textContent = tableStowed ? 'Set up table' : 'Stow table';
