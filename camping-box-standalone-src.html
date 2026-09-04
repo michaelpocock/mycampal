@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>Camping box — Ford Tourneo Custom</title>
+<title>myCampal — Ford Tourneo Custom</title>
 <link rel="stylesheet" href="_ds/organic-38fa8e91-4870-4476-9e42-06181d6c2941/styles.css">
 <script type="importmap">
 {
@@ -25,9 +25,10 @@
   three-d-stage:not(:defined){visibility:hidden}
   body{margin:0;background:var(--color-bg);min-height:100vh}
   .wrap{display:flex;flex-direction:column;height:100dvh;overflow:hidden;padding:var(--space-4) var(--space-6);box-sizing:border-box;gap:var(--space-4)}
-  .head{flex:0 0 auto;display:flex;flex-wrap:wrap;align-items:center;gap:var(--space-2) var(--space-4);max-height:26vh;overflow:hidden}
-  h1{font-family:var(--font-heading);font-size:20px;margin:0;line-height:1.2;flex:0 0 auto}
-  .legend{flex:0 1 auto;display:flex;flex-wrap:wrap;align-items:center;gap:var(--space-2)}
+  .head{flex:0 0 auto;display:flex;flex-wrap:wrap;align-items:center;gap:var(--space-2) var(--space-4);overflow:visible}
+  h1{font-family:var(--font-heading);font-size:20px;margin:0;line-height:1.2;flex:0 0 auto;white-space:nowrap}
+  .legend{flex:0 1 auto;display:flex;flex-wrap:wrap;align-items:center;gap:var(--space-3)}
+  .legend .group{display:flex;flex-wrap:nowrap;align-items:center;gap:var(--space-2);padding:0 var(--space-2);border-radius:999px;background:var(--color-neutral-200)}
   .legend .btn{white-space:nowrap}
   .legend .tag{white-space:nowrap}
   .stage-wrap{position:relative;flex:1 1 0;min-height:260px;display:flex;overflow:hidden}
@@ -59,15 +60,20 @@
 <div class="wrap">
   <div class="head">
     <div>
-      <h1>myCampal<br>Ford Tourneo Custom</h1>
+      <h1>myCampal Ford Tourneo Custom</h1>
     </div>
     <div class="legend">
-      <button id="drawer-toggle" class="btn btn-secondary" type="button">Open drawers</button>
-      <button id="bed-toggle" class="btn btn-secondary" type="button">Unfold bed</button>
-      <button id="lounge-toggle" class="btn btn-secondary" type="button">Lounger</button>
-      <button id="doors-toggle" class="btn btn-secondary" type="button">Open doors</button>
-      <button id="table-toggle" class="btn btn-secondary" type="button">Stow table</button>
-      <button id="seats-out-toggle" class="btn btn-secondary" type="button">Remove 4 seats</button>
+      <span class="group">
+        <button id="drawer-toggle" class="btn btn-secondary" type="button">Open drawers</button>
+        <button id="bed-toggle" class="btn btn-secondary" type="button">Unfold bed</button>
+        <button id="lounge-toggle" class="btn btn-secondary" type="button">Lounger</button>
+        <button id="table-toggle" class="btn btn-secondary" type="button">Stow table</button>
+      </span>
+      <span class="group">
+        <button id="doors-toggle" class="btn btn-secondary" type="button">Open doors</button>
+        <button id="seats-out-toggle" class="btn btn-secondary" type="button">Remove 4 seats</button>
+        <button id="front-seats-out-toggle" class="btn btn-secondary" type="button">Remove 2 seats</button>
+      </span>
       <button id="van-toggle" class="btn btn-ghost" type="button">Hide van</button>
     </div>
   </div>
@@ -98,8 +104,15 @@
       <div class="dot d1"></div>
       <div class="dot d2"></div>
     </figure>
+    <figure class="callout" data-drawer="5">
+      <span class="badge">5</span>
+      <div class="bubble"><img src="uploads/pasted-1788502782458-0.png" alt="Dark-faced ply panel with two chrome rails, slid out of the middle bay as a shelf"></div>
+      <div class="dot d1"></div>
+      <div class="dot d2"></div>
+    </figure>
   </div>
 </div>
+<script src="./image-slot.js"></script>
 <script src="./three-d-stage.js"></script>
 <script type="module" src="./camping-box-model.js"></script>
 </body>

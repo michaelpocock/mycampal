@@ -106,9 +106,10 @@ for (const [side, sx] of [['left', -1], ['right', 1]]) {
 /* ---- removable pedestal table between the two left-hand seats ---- */
 const TBLZ = -1.22, TBLX = -0.46, TBL_H = 0.62;
 const tableUnit = new THREE.Group(); tableUnit.name = 'pedestal_table'; model.add(tableUnit);
-box('table_base_board', 0.42, 0.018, 0.34, TBLX, 0.015, TBLZ, M.ply, tableUnit);
+const tableBoard = new THREE.Group(); tableBoard.name = 'table_floor_board'; tableUnit.add(tableBoard);
+box('table_base_board', 0.42, 0.018, 0.34, TBLX, 0.015, TBLZ, M.ply, tableBoard);
 for (const dx of [-0.15, 0.15]) {
-  box('velcro_strip_' + (dx < 0 ? 'left' : 'right'), 0.075, 0.006, 0.30, TBLX + dx, 0.003, TBLZ, M.stove, tableUnit);
+  box('velcro_strip_' + (dx < 0 ? 'left' : 'right'), 0.075, 0.006, 0.30, TBLX + dx, 0.003, TBLZ, M.stove, tableBoard);
 }
 /* post and top lift off the board as one piece */
 const tableParts = new THREE.Group(); tableParts.name = 'table_post_and_top';
@@ -124,8 +125,10 @@ const tEdge = box('table_top_edge', 0.92, 0.010, 0.010, TOPDX, TBL_H - 0.008, 0.
    through the bed platform as a bedside table when the lounger is out */
 const STOW_Z = -2.26 - TBLZ, POST_X = -0.75 - TBLX, POST_Z = -2.14 - TBLZ;
 const BEDSIDE_TOP_Y = 0.88, BEDSIDE_TOP_SX = 0.42;
-const BS_POST_X = 0.78 - TBLX, BS_Z = -0.96 - TBLZ;   /* beside the bed, a third of the way down */
+const BS_POST_X = 0.78 - TBLX, BS_Z = -0.76 - TBLZ;   /* beside the bed, back towards the tailgate, clear of the wheel arch */
 function setTableStowed(stowed, bedside) {
+  /* the floor board belongs to the between-seats pose only */
+  tableBoard.visible = !bedside;
   tTop.scale.set(1, 1, 1); tEdge.scale.set(1, 1, 1); tPost.scale.set(1, 1, 1);
   tTop.rotation.x = 0; tEdge.rotation.x = 0; tPlate.rotation.x = 0;
   if (stowed) {
@@ -182,6 +185,43 @@ function seat(tag, x, z, reversed) {
 }
 for (const [row, z] of ROWS) SEATX.forEach((x, i) => seat(row + '_' + (i + 1), x, z, row === 'row1'));
 
+/* ---- two adult bikes, front wheels off, stood on their rear wheels leaning against the
+       bulkhead in the space the front pair of seats leaves ---- */
+const bikes = new THREE.Group(); bikes.name = 'bikes'; bikes.visible = false; vanSolid.add(bikes);
+function strut(name, x1, y1, x2, y2, th, mat, parent) {
+  const dx = x2 - x1, dy = y2 - y1, len = Math.hypot(dx, dy);
+  const m = box(name, len, th, th, (x1 + x2) / 2, (y1 + y2) / 2, 0, mat, parent);
+  m.rotation.z = Math.atan2(dy, dx);
+  return m;
+}
+function bike(tag, z, frameMat) {
+  const g = new THREE.Group(); g.name = 'bike_' + tag;
+  g.position.set(-0.06, 0.574, z); g.rotation.z = -0.9599;   /* 55° lean, rear wheel on the floor */
+  bikes.add(g);
+  for (const [side, wx] of [['rear', 0.525]]) {
+    const t = new THREE.Mesh(new THREE.TorusGeometry(0.315, 0.022, 12, 40), M.trim_dk);
+    t.name = 'bike_' + tag + '_tyre_' + side; t.position.set(wx, 0.337, 0); g.add(t);
+    const r = new THREE.Mesh(new THREE.TorusGeometry(0.27, 0.009, 8, 36), M.steel);
+    r.name = 'bike_' + tag + '_rim_' + side; r.position.set(wx, 0.337, 0); g.add(r);
+    tube('bike_' + tag + '_hub_' + side, 0.016, 0.09, wx, 0.337, 0, M.steel, g, 'z');
+  }
+  const BB = [0.18, 0.27], SD = [0.34, 0.72], HD = [-0.30, 0.70];
+  strut('bike_' + tag + '_seat_tube', BB[0], BB[1], SD[0], SD[1], 0.028, frameMat, g);
+  strut('bike_' + tag + '_top_tube', SD[0], SD[1], HD[0], HD[1], 0.026, frameMat, g);
+  strut('bike_' + tag + '_down_tube', BB[0], BB[1], HD[0] + 0.02, HD[1] - 0.10, 0.030, frameMat, g);
+  strut('bike_' + tag + '_chain_stay', BB[0], BB[1], 0.525, 0.337, 0.020, frameMat, g);
+  strut('bike_' + tag + '_seat_stay', SD[0], SD[1], 0.525, 0.337, 0.018, frameMat, g);
+  strut('bike_' + tag + '_fork', HD[0], HD[1], -0.525, 0.337, 0.024, M.steel, g);
+  box('bike_' + tag + '_saddle', 0.20, 0.035, 0.10, 0.37, 0.755, 0, M.seat, g);
+  tube('bike_' + tag + '_bars', 0.016, 0.28, HD[0] - 0.03, HD[1] + 0.02, 0, M.steel, g, 'z');
+  tube('bike_' + tag + '_crank', 0.015, 0.13, BB[0], BB[1], 0, M.steel, g, 'z');
+  const cr = new THREE.Mesh(new THREE.TorusGeometry(0.09, 0.010, 8, 28), M.steel);
+  cr.name = 'bike_' + tag + '_chainring'; cr.position.set(BB[0], BB[1], 0.07); g.add(cr);
+  return g;
+}
+bike('one', -1.76, M.latch);
+bike('two', -2.08, M.trim_dk);
+
 
 const bayW = (W - 4 * T) / 3;   /* thirds: drawer · open space · drawer */
 const divX = bayW / 2 + T / 2;
@@ -193,7 +233,11 @@ box('carcass_side_left',  T, H - T, D, -W / 2 + T / 2, T + (H - T) / 2, 0, M.ply
 box('carcass_side_right', T, H - T, D,  W / 2 - T / 2, T + (H - T) / 2, 0, M.ply, carcass);
 box('carcass_divider_left',  T, H - T, D, -divX, T + (H - T) / 2, 0, M.ply, carcass);
 box('carcass_divider_right', T, H - T, D,  divX, T + (H - T) / 2, 0, M.ply, carcass);
-box('carcass_front_panel', W - 2 * T, H - T, T, 0, T + (H - T) / 2, -D / 2 + T / 2, M.ply_dark, carcass);
+/* the van-side panel closes the two drawer bays only — the middle bay is open
+   front and back so gear can pass through from the cab side */
+for (const [side, sx] of [['left', -1], ['right', 1]]) {
+  box('carcass_front_panel_' + side, bayW, H - T, T, sx * (bayW + T), T + (H - T) / 2, -D / 2 + T / 2, M.ply_dark, carcass);
+}
 box('carcass_top_deck', W, T, D, 0, H - T / 2, 0, M.ply, carcass);
 box('carcass_rear_rail', W, 0.05, T, 0, H - T - 0.025, D / 2 - T / 2, M.ply_dark, carcass);
 /* floor-mount cleats */
@@ -382,11 +426,36 @@ const drawerRefs = [
   { n: 4, g: d4.g, key: 'drawer_right_lower', hinge: d4.frontPivot, lid: d4.fridgeLid },
 ];
 
+/* ---- removable door across the middle bay: lifts out and goes back in as a shelf ---- */
+const midDoor = new THREE.Group(); midDoor.name = 'mid_door'; model.add(midDoor);
+const mdW = bayW - 0.012, mdH = H - T - 0.012;
+const doorBoard = new THREE.Group(); doorBoard.name = 'mid_door_panel'; midDoor.add(doorBoard);
+box('mid_door_board', mdW, mdH, T, 0, 0, 0, M.accent, doorBoard);
+box('mid_door_face', mdW - 0.05, mdH - 0.05, 0.004, 0, 0, T / 2 + 0.002, M.accent, doorBoard);
+for (const sy of [-1, 1]) {
+  box('mid_door_cleat_' + (sy < 0 ? 'lower' : 'upper'), mdW - 0.06, 0.022, 0.020, 0, sy * (mdH / 2 - 0.05), -T / 2 - 0.010, M.trim_dk, doorBoard);
+}
+tube('mid_door_pull', 0.010, 0.14, 0, 0, T / 2 + 0.012, M.steel, doorBoard, 'x');
+
+const DOOR_Y = T + (H - T) / 2, DOOR_Z = D / 2 - T / 2;
+const DOOR_OUT = DOOR_Z + 0.42, SHELF_Z = D / 2 + 0.7 * mdH - mdH / 2;   /* shelf stands 70% proud of the unit */
+/* p = 0 shut across the gap · 1 back in as a shelf */
+function setDoor(p) {
+  const a = Math.min(1, Math.max(0, p / 0.4));
+  const b = Math.min(1, Math.max(0, (p - 0.4) / 0.3));
+  const c = Math.min(1, Math.max(0, (p - 0.7) / 0.3));
+  const sm = t => t * t * (3 - 2 * t);
+  doorBoard.rotation.x = -Math.PI / 2 * sm(b);
+  const z = c > 0 ? DOOR_OUT + (SHELF_Z - DOOR_OUT) * sm(c) : DOOR_Z + (DOOR_OUT - DOOR_Z) * sm(a);
+  doorBoard.position.set(0, DOOR_Y, z);
+}
+setDoor(0);
+
 /* runners, extended with the drawers */
 const runnersByDrawer = {};
 for (const [side, sx] of [['left', -1], ['right', 1]]) {
   const outer = sx * (W / 2 - T - 0.012);
-  const inner = sx * (divX - T / 2 - 0.012);
+  const inner = sx * (divX + T / 2 + 0.012);   /* inside its own bay, not in the pass-through */
   for (const lvl of ['lower', 'upper']) {
     const out = 0;
     const [baseY, dh] = BAYS['drawer_' + side + '_' + lvl];
@@ -416,8 +485,10 @@ function panel(name, len, zCenter, y, parent) {
     const z = zCenter - len / 2 + (len / slats) * (i + 0.5);
     box(name + '_slat_' + (i + 1), bedW - 0.12, pT, len / slats - 0.045, 0, y, z, M.ply_dark, g);
   }
-  /* hinged flaps that fold out over the wheel arches */
+  /* hinged flaps that fold out over the wheel arches
+     (no left-hand flap at the tailgate end — the van's vent sits there) */
   for (const sx of [-1, 1]) {
+    if (sx < 0 && name === 'bed_panel_rear') continue;
     const side = sx < 0 ? 'left' : 'right';
     const pv = new THREE.Group(); pv.name = name + '_flap_hinge_' + side;
     pv.position.set(sx * bedW / 2, y, zCenter); g.add(pv);
@@ -449,12 +520,21 @@ panel('bed_panel_mid', pL, -pL / 2, 0, pivotA);
 const pivotB = new THREE.Group(); pivotB.name = 'bed_hinge_b';
 pivotB.position.set(0, 0, -pL); pivotA.add(pivotB);
 tube('hinge_mid_front', 0.011, bedW - 0.06, 0, 0, 0, M.steel, pivotB);
-panel('bed_panel_front', pL, -pL / 2, 0, pivotB);
+const frontPivot = new THREE.Group(); frontPivot.name = 'bed_front_recline';
+frontPivot.position.set(0, 0, 0); pivotB.add(frontPivot);
+panel('bed_panel_front', pL, -pL / 2, 0, frontPivot);
 
 const legs = new THREE.Group(); legs.name = 'bed_legs';
 legs.position.set(0, -pT / 2, -pL + 0.10); pivotB.add(legs);
 for (const sx of [-1, 1]) {
   box('bed_leg_' + (sx < 0 ? 'left' : 'right'), 0.05, H - 0.02, 0.05, sx * (bedW / 2 - 0.06), -(H - 0.02) / 2, 0, M.ply_dark, legs);
+}
+
+/* second pair mid-span, just past the mid/front hinge, to stop the platform sagging */
+const legs2 = new THREE.Group(); legs2.name = 'bed_legs_mid';
+legs2.position.set(0, -pT / 2, -0.12); pivotB.add(legs2);
+for (const sx of [-1, 1]) {
+  box('bed_leg_mid_' + (sx < 0 ? 'left' : 'right'), 0.05, H - 0.02, 0.05, sx * (bedW / 2 - 0.06), -(H - 0.02) / 2, 0, M.ply_dark, legs2);
 }
 
 /* the three cushions are loose: they lift off before the wood folds and go back on top after */
@@ -476,20 +556,18 @@ const smooth = t => t * t * (3 - 2 * t);
 
 /* f = 0 unfolded over the seats, 1 folded flat on the deck.
    0–0.25 cushions lift off · 0.25–0.75 the wood folds · 0.75–1 cushions land on top */
+let folded = 1;
+let reclined = 0;
 function setFold(f) {
   const fp = clamp01((f - 0.25) / 0.5);
+  folded = fp;
   const th = Math.PI * fp, k = (1 - Math.cos(th)) / 2;
   pivotA.rotation.x = th; pivotA.position.y = bedY + LIFT * k;
   pivotB.rotation.x = -th; pivotB.position.y = -LIFT * k;   /* reverse fold — the top panel lands face-up */
   legs.rotation.x = -Math.PI / 2 * Math.min(1, fp * 1.5);
-  legs.visible = fp < 0.8;
-  for (const f of flaps) f.pv.rotation.z = f.sx * Math.PI / 2 * fp;   /* flaps fold up as the bed folds */
-  for (const s of sideCushions) {
-    const xDep = s.sx * (bedW / 2 + FLAP_W / 2);
-    const xFold = s.sx * (bedW / 2 + cT / 2 + 0.014);
-    s.m.position.x = xDep + (xFold - xDep) * fp;
-    s.m.rotation.z = s.sx * Math.PI / 2 * fp;
-  }
+  legs.visible = fp < 0.8 && reclined < 0.5;
+  legs2.rotation.x = -Math.PI / 2 * Math.min(1, fp * 1.5);
+  legs2.visible = fp < 0.8;
 
 
   const lift = smooth(clamp01(f / 0.25));
@@ -501,18 +579,34 @@ function setFold(f) {
     c.m.position.y = (1 - place) * (CUSHION_Y + (RAISE + c.i * 0.012) * lift) + place * yStack;
   }
 }
-/* r = 0 flat, 1 backrest up at 45° — only meaningful with the bed unfolded */
+/* g = 0 flaps out over the arches, 1 folded up against the mattress.
+   Driven on its own track so it can lag the bed unfolding by two seconds. */
+function setFlaps(g) {
+  for (const f of flaps) f.pv.rotation.z = f.sx * Math.PI / 2 * g;
+  for (const s of sideCushions) {
+    const xDep = s.sx * (bedW / 2 + FLAP_W / 2);
+    const xFold = s.sx * (bedW / 2 + cT / 2 + 0.014);
+    s.m.position.x = xDep + (xFold - xDep) * g;
+    s.m.rotation.z = s.sx * Math.PI / 2 * g;
+  }
+}
+
+/* r = 0 flat, 1 backrest up at 45° — the cab-end panel is the one that rises */
 const RECLINE = Math.PI / 4;
 function setRecline(r) {
   const th = RECLINE * r;
-  rearPivot.rotation.x = -th;
-  const c = cushions[0];
+  reclined = r;
+  frontPivot.rotation.x = th;
+  legs.visible = folded < 0.8 && r < 0.5;   /* the far pair has nothing to stand under once the panel is up */
+  if (folded > 0.001) return;   /* folded away — setFold owns the cushion stack */
+  const c = cushions[2];
   const arm = pL / 2, off = pT / 2 + cT / 2 + 0.002;
-  c.m.rotation.x = -th;
-  c.m.position.z = hingeA + arm * Math.cos(th) + off * Math.sin(th);
-  c.m.position.y = bedY + arm * Math.sin(th) + off * Math.cos(th);
+  c.m.rotation.x = th;
+  c.m.position.z = hingeA - pL + off * Math.sin(th) - arm * Math.cos(th);
+  c.m.position.y = bedY + off * Math.cos(th) + arm * Math.sin(th);
 }
 setFold(0);
+setFlaps(0);
 setRecline(0);
 
 /* ---- slide the box (not the van) forward to meet the seat backs ---- */
@@ -625,7 +719,9 @@ const anim = {
   d2: { p: 0, target: 0, ms: 900, apply: p => setOut(drawerRefs[1], ease(p) * OPEN) },
   d3: { p: 0, target: 0, ms: 900, apply: p => setOut(drawerRefs[2], ease(p) * OPEN) },
   d4: { p: 0, target: 0, ms: 900, apply: p => setOut(drawerRefs[3], ease(p) * OPEN) },
+  d5: { p: 0, target: 0, ms: 1600, apply: p => setDoor(ease(p)) },
   bed:    { p: 1, target: 1, ms: 2200, apply: p => setFold(ease(p)) },
+  flaps:  { p: 1, target: 1, ms: 900, apply: p => setFlaps(ease(p)) },
   seats:  { p: 0, target: 0, ms: 1400, apply: p => setSeatBacks(ease(p)) },
   recline: { p: 0, target: 0, ms: 1200, apply: p => setRecline(ease(p)) },
   doors:  { p: 1, target: 1, ms: 1600, apply: p => {
@@ -646,6 +742,8 @@ anim.seats.gate = () => anim.seats.target === 1 || anim.bed.p === 1;
 /* the backrest can only rise once the bed is flat and down */
 anim.recline.gate = () => anim.recline.target === 0 || anim.bed.p === 0;
 let last = performance.now();
+const FLAP_DELAY = 4000;
+let bedPrevTarget = anim.bed.target, flapsAt = null;
 /* --- projected screen bounds of everything visible, for bubble placement --- */
 const visBox = new THREE.Box3();
 const corner = new THREE.Vector3();
@@ -836,6 +934,15 @@ function placeCallouts() {
 updateVisBox();
 function tick(now) {
   const dt = now - last; last = now;
+  /* the side cushions wait two seconds after the bed starts unfolding */
+  if (anim.bed.target !== bedPrevTarget) { bedPrevTarget = anim.bed.target; flapsAt = null; }
+  if (anim.bed.target === 0) {
+    if (flapsAt === null && anim.bed.p < 1) flapsAt = now + FLAP_DELAY;
+    anim.flaps.target = (flapsAt !== null && now >= flapsAt) ? 0 : 1;
+  } else {
+    flapsAt = null;
+    anim.flaps.target = 1;
+  }
   let moved = false;
   for (const a of Object.values(anim)) {
     if (a.p !== a.target && (!a.gate || a.gate())) {
@@ -860,7 +967,9 @@ function tick(now) {
   requestAnimationFrame(tick);
 }
 for (const d of drawerRefs) anim['d' + d.n].apply(0);
+anim.d5.apply(0);
 anim.bed.apply(1);
+anim.flaps.apply(1);
 anim.seats.apply(0);
 anim.recline.apply(0);
 anim.doors.apply(1);
@@ -883,12 +992,11 @@ if (loungeBtn) loungeBtn.addEventListener('click', () => {
     anim.seats.target = 1;
   }
   applyTableMode();
-  loungeBtn.textContent = anim.recline.target ? 'Flat bed' : 'Lounger';
   labels();
 });
 
 const drawerBtn = document.getElementById('drawer-toggle');
-function setDrawers(t) { for (const d of drawerRefs) anim['d' + d.n].target = t; }
+function setDrawers(t) { for (const d of drawerRefs) anim['d' + d.n].target = t; anim.d5.target = t; }
 function anyDrawerOpen() { return drawerRefs.some(d => anim['d' + d.n].target === 1); }
 
 let seqTimers = [];
@@ -984,6 +1092,7 @@ function labels() {
   const db = document.getElementById('doors-toggle');
   if (db) db.textContent = anim.doors.target ? 'Close doors' : 'Open doors';
   if (bedBtn) bedBtn.textContent = anim.bed.target === 1 ? 'Unfold bed' : 'Fold bed';
+  if (loungeBtn) loungeBtn.textContent = anim.recline.target ? 'Flat bed' : 'Lounger';
 }
 if (bedBtn) bedBtn.addEventListener('click', () => {
   stopDemo();
@@ -1027,6 +1136,19 @@ function reframe() {
   ctr.update();
 }
 
+/* front row only: the middle and right-hand seats */
+const FRONT_REMOVABLE = ['row1_2', 'row1_3'];
+const frontSeatsBtn = document.getElementById('front-seats-out-toggle');
+if (frontSeatsBtn) frontSeatsBtn.addEventListener('click', () => {
+  const out = seatGroups[FRONT_REMOVABLE[0]].visible;
+  for (const k of FRONT_REMOVABLE) { const g = seatGroups[k]; if (g) g.visible = !out; }
+  frontSeatsBtn.textContent = out ? 'Refit 2 seats' : 'Remove 2 seats';
+  bikes.visible = out;   /* bikes go in the space the seats leave */
+  if (seatsOutBtn) seatsOutBtn.style.display = out ? 'none' : '';
+  updateVisBox();
+  reframe();
+});
+
 /* four seats out: the middle pair and the pair on the right */
 const REMOVABLE = ['row1_2', 'row2_2', 'row1_3', 'row2_3'];
 const seatsOutBtn = document.getElementById('seats-out-toggle');
@@ -1034,6 +1156,7 @@ if (seatsOutBtn) seatsOutBtn.addEventListener('click', () => {
   const out = seatGroups[REMOVABLE[0]].visible;   /* currently in → take them out */
   for (const k of REMOVABLE) { const g = seatGroups[k]; if (g) g.visible = !out; }
   seatsOutBtn.textContent = out ? 'Refit 4 seats' : 'Remove 4 seats';
+  if (frontSeatsBtn) frontSeatsBtn.style.display = out ? 'none' : '';
   updateVisBox();
   reframe();
 });
@@ -1066,10 +1189,15 @@ function applyView() {
   /* the set-up table belongs to the layout, not the van — keep it when the van goes */
   tableUnit.visible = vanSolid.visible || !tableStowed || anim.recline.target === 1;
   /* van-only controls have nothing to act on once the van is hidden */
-  for (const id of ['doors-toggle', 'seats-out-toggle']) {
+  for (const id of ['doors-toggle', 'seats-out-toggle', 'front-seats-out-toggle']) {
     const b = document.getElementById(id);
     if (b) b.style.display = vanSolid.visible ? '' : 'none';
   }
+  /* each removal control hides the other while its seats are out */
+  const fourOut = !seatGroups.row2_2.visible;
+  const frontOut = !seatGroups.row1_2.visible && !fourOut;
+  if (seatsOutBtn && vanSolid.visible && frontOut) seatsOutBtn.style.display = 'none';
+  if (frontSeatsBtn && vanSolid.visible && fourOut) frontSeatsBtn.style.display = 'none';
   updateVisBox();
   reframe();
 }
