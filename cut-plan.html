@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Cut plan — myCampal Ford Tourneo Custom</title>
+<link rel="stylesheet" href="styles.css">
+<style>
+  body{margin:0;background:var(--color-bg);color:var(--color-text)}
+  .page{max-width:1180px;margin:0 auto;padding:var(--space-6) var(--space-5) var(--space-8);display:flex;flex-direction:column;gap:var(--space-6)}
+  .head{display:flex;flex-wrap:wrap;align-items:center;gap:var(--space-3) var(--space-4)}
+  h1{font-family:var(--font-heading);font-size:34px;line-height:1.1;margin:0}
+  h2{font-family:var(--font-heading);font-size:24px;margin:0 0 var(--space-3)}
+  h3{font-family:var(--font-heading);font-size:17px;margin:0}
+  p.lede{max-width:62ch;margin:0;color:var(--color-neutral-700)}
+  .spacer{flex:1 1 auto}
+  .controls{display:flex;flex-wrap:wrap;align-items:center;gap:var(--space-3)}
+  .stats{display:flex;flex-wrap:wrap;gap:var(--space-3)}
+  .stat{background:var(--color-neutral-100);border-radius:var(--radius-lg);padding:var(--space-3) var(--space-4);min-width:150px}
+  .stat b{display:block;font-family:var(--font-heading);font-size:26px;line-height:1.1}
+  .stat span{font-size:13px;color:var(--color-neutral-700)}
+  section.group{display:flex;flex-direction:column;gap:var(--space-4)}
+  .sheet{background:var(--color-neutral-100);border-radius:var(--radius-lg);padding:var(--space-3);box-shadow:var(--shadow-sm)}
+  .sheet .bar{display:flex;flex-wrap:wrap;align-items:baseline;gap:var(--space-2) var(--space-3);margin-bottom:var(--space-2)}
+  .sheet .bar .muted{font-size:13px;color:var(--color-neutral-700)}
+  svg{display:block;width:100%;height:auto;border-radius:var(--radius-md);background:var(--color-bg)}
+  .table td.num,.table th.num{text-align:right;font-variant-numeric:tabular-nums}
+  .note{font-size:13px;color:var(--color-neutral-700);max-width:78ch}
+  @media print{
+    .controls,.backlink{display:none}
+    .page{max-width:none;padding:12mm}
+    .sheet{break-inside:avoid;box-shadow:none}
+  }
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="head">
+    <div>
+      <h1>CNC cut plan</h1>
+      <p class="lede">Every ply part in the camping box, nested onto 2400 × 1200 mm sheets. Dimensions are taken straight from the 3D model, so they change with it.</p>
+    </div>
+    <div class="spacer"></div>
+    <a class="btn btn-secondary backlink" href="index.html">Back to the model</a>
+  </div>
+
+  <div class="controls">
+    <label class="field" style="margin:0">
+      <span>Cutter diameter</span>
+      <select id="kerf" class="input" style="width:130px">
+        <option value="3">3 mm</option>
+        <option value="6" selected>6 mm</option>
+        <option value="8">8 mm</option>
+      </select>
+    </label>
+    <label class="field" style="margin:0">
+      <span>Sheet edge margin</span>
+      <select id="margin" class="input" style="width:130px">
+        <option value="0">0 mm</option>
+        <option value="10" selected>10 mm</option>
+        <option value="15">15 mm</option>
+      </select>
+    </label>
+    <button id="print" class="btn btn-primary" type="button">Print cut plan</button>
+  </div>
+
+  <div class="stats" id="stats"></div>
+  <div id="sheets"></div>
+
+  <section class="group">
+    <h2>Parts list</h2>
+    <table class="table" id="parts"></table>
+  <p class="note">Bed panels are listed as solid boards. The model draws them slatted; if you cut them that way, substitute two 90 mm rails plus slats per panel and the sheet count drops by about half a sheet. The four drawer fronts are 22 mm faced board in the model — they are nested here on the 18 mm sheets for convenience, so cut them from their own material and treat that nest space as spare. Nesting is a guillotine shelf fit with the kerf allowed between parts, rotation permitted — grain direction is not constrained, so re-orient any part where face grain matters before cutting.</p>
+  </section>
+</div>
+
+<script>
+/* ---- dimensions carried over from camping-box-model.js (mm) ---- */
+const W = 1370, D = 850, H = 590, T = 18;
+const bayW = (W - 4 * T) / 3;
+const DECK_W = (W - bayW) / 2;
+const dW = bayW - 30, dD = D - 60;
+const pT = 16, bedW = W - 20, pL = 660, FLAP_W = (1720 - bedW) / 2;
+const BAYS = [
+  ['1 · kitchen', 240], ['2 · crate', 240], ['3 · tray', 125], ['4 · fridge', 380]
+];
+const SHEET_L = 2400, SHEET_W = 1200;
+const r1 = v => Math.round(v * 10) / 10;
+
+const PARTS = [
+  { t: T, id: 'A1', name: 'Carcass floor', w: W, h: D, qty: 1 },
+  { t: T, id: 'A2', name: 'Carcass side', w: D, h: H - T, qty: 2 },
+  { t: T, id: 'A3', name: 'Bay divider', w: D, h: H - T, qty: 2 },
+  { t: T, id: 'A4', name: 'Cab-end bay panel', w: bayW, h: H - T, qty: 2 },
+  { t: T, id: 'A5', name: 'Top deck', w: DECK_W, h: D, qty: 2 },
+  { t: T, id: 'A6', name: 'Hatch panel (lift-out)', w: bayW - 4, h: D - 4, qty: 1 },
+  { t: T, id: 'A7', name: 'Rear rail', w: DECK_W, h: 50, qty: 2 },
+  { t: T, id: 'A8', name: 'Rear rail, hatch bay', w: bayW, h: 50, qty: 1 },
+  { t: T, id: 'A9', name: 'Bay shelf', w: bayW, h: D, qty: 2 },
+];
+BAYS.forEach(([label, dh], i) => {
+  const n = i + 1;
+  PARTS.push(
+    { t: T, id: 'B' + n + 'a', name: 'Drawer ' + label + ' — base', w: dW, h: dD, qty: 1 },
+    { t: T, id: 'B' + n + 'b', name: 'Drawer ' + label + ' — side', w: dD, h: dh, qty: 2 },
+    { t: T, id: 'B' + n + 'c', name: 'Drawer ' + label + ' — back', w: dW - 2 * T, h: dh, qty: 1 },
+    { t: T, id: 'B' + n + 'd', name: 'Drawer ' + label + ' — front (22 mm faced board)', w: bayW + 12, h: dh + 20, qty: 1, note: 22 },
+  );
+});
+PARTS.push(
+  { t: pT, id: 'C1', name: 'Bed panel — aft', w: bedW, h: pL, qty: 1 },
+  { t: pT, id: 'C2', name: 'Bed panel — middle', w: bedW, h: pL, qty: 1 },
+  { t: pT, id: 'C3', name: 'Bed panel — cab end (rises as backrest)', w: bedW, h: pL, qty: 1 },
+  { t: pT, id: 'C4', name: 'Bed extension board (lies over C3)', w: bedW, h: pL, qty: 1 },
+  { t: pT, id: 'C5', name: 'Wheel-arch flap', w: FLAP_W, h: pL - 30, qty: 6 },
+  { t: pT, id: 'C6', name: 'Extension board leg', w: 50, h: 610, qty: 2 },
+  { t: pT, id: 'C7', name: 'Backrest prop leg', w: 36, h: 440, qty: 2 },
+  { t: pT, id: 'C8', name: 'Backrest prop foot', w: 60, h: 70, qty: 2 },
+);
+
+/* ---- guillotine shelf nesting ---- */
+function nest(parts, kerf, margin) {
+  const items = [];
+  for (const p of parts) {
+    for (let i = 0; i < p.qty; i++) {
+      const long = Math.max(p.w, p.h), short = Math.min(p.w, p.h);
+      items.push({ id: p.id, name: p.name, long, short, idx: p.qty > 1 ? i + 1 : 0 });
+    }
+  }
+  items.sort((a, b) => b.short - a.short || b.long - a.long);
+  const usableL = SHEET_L - 2 * margin, usableW = SHEET_W - 2 * margin;
+  const sheets = [];
+  const newSheet = () => { const s = { shelves: [], usedY: 0 }; sheets.push(s); return s; };
+  for (const it of items) {
+    const forms = [[it.long, it.short], [it.short, it.long]]
+      .filter(([w, h]) => w <= usableL && h <= usableW);
+    if (!forms.length) { it.oversize = true; continue; }
+    let placed = false;
+    for (const s of sheets) {
+      for (const sh of s.shelves) {
+        for (const [w, h] of forms) {
+          if (h <= sh.h && sh.x + w <= usableL) {
+            sh.parts.push({ ...it, x: margin + sh.x, y: margin + sh.y, w, h });
+            sh.x += w + kerf;
+            placed = true; break;
+          }
+        }
+        if (placed) break;
+      }
+      if (placed) break;
+      for (const [w, h] of forms) {
+        if (s.usedY + h <= usableW) {
+          const sh = { y: s.usedY, h, x: 0, parts: [] };
+          s.shelves.push(sh);
+          sh.parts.push({ ...it, x: margin, y: margin + sh.y, w, h });
+          sh.x = w + kerf;
+          s.usedY += h + kerf;
+          placed = true; break;
+        }
+      }
+      if (placed) break;
+    }
+    if (!placed) {
+      const s = newSheet();
+      const [w, h] = forms[0];
+      const sh = { y: 0, h, x: w + kerf, parts: [{ ...it, x: margin, y: margin, w, h }] };
+      s.shelves.push(sh);
+      s.usedY = h + kerf;
+    }
+  }
+  return sheets;
+}
+
+function sheetSvg(sheet, tone) {
+  const parts = sheet.shelves.flatMap(sh => sh.parts);
+  const used = parts.reduce((a, p) => a + p.w * p.h, 0);
+  const cells = parts.map(p => {
+    const label = p.id + (p.idx ? '.' + p.idx : '');
+    const dims = r1(p.w) + ' × ' + r1(p.h);
+    const fits = (txt, size, room) => txt.length * size * 0.58 + 36 <= room;
+    const vertical = p.w < 140 && p.h > p.w * 1.6;
+    const room = vertical ? p.h : p.w;
+    const refSize = fits(label, 38, room) ? 38 : 24;
+    const showDims = fits(dims, 28, room) && (vertical ? p.w >= 46 : p.h >= 110);
+    const tx = p.x + (vertical ? p.w / 2 : 18);
+    const ty = p.y + (vertical ? p.h - 18 : (showDims ? 46 : p.h / 2 + refSize * 0.36));
+    const rot = vertical ? ` transform="rotate(-90 ${tx} ${ty})"` : '';
+    const anchor = vertical ? ' text-anchor="start"' : '';
+    return `<g>
+      <rect x="${p.x}" y="${p.y}" width="${p.w}" height="${p.h}" rx="10"
+            fill="var(--color-${tone}-200)" stroke="var(--color-${tone}-700)" stroke-width="3"></rect>
+      <text x="${tx}" y="${ty}"${rot}${anchor} font-family="var(--font-heading)"
+            font-size="${refSize}" fill="var(--color-${tone}-900)">${label}</text>
+      ${showDims ? `<text x="${tx + (vertical ? 0 : 0)}" y="${vertical ? ty + 32 : p.y + 86}"${rot ? ` transform="rotate(-90 ${tx} ${ty})"` : ''}${anchor}
+            font-family="var(--font-body)" font-size="28" fill="var(--color-${tone}-900)">${dims}</text>` : ''}
+    </g>`;
+  }).join('');
+  return {
+    svg: `<svg viewBox="-6 -6 ${SHEET_L + 12} ${SHEET_W + 12}" role="img">
+      <rect x="0" y="0" width="${SHEET_L}" height="${SHEET_W}" rx="14"
+            fill="var(--color-bg)" stroke="var(--color-neutral-400)" stroke-width="4"></rect>
+      ${cells}
+    </svg>`,
+    yield: used / (SHEET_L * SHEET_W),
+    count: parts.length,
+  };
+}
+
+function render() {
+  const kerf = +document.getElementById('kerf').value;
+  const margin = +document.getElementById('margin').value;
+  const groups = [
+    { t: T, title: '18 mm birch ply — carcass and drawers', tone: 'accent' },
+    { t: pT, title: '16 mm birch ply — bed platform', tone: 'accent-2' },
+  ];
+  let html = '', totalSheets = 0, totalArea = 0;
+  for (const g of groups) {
+    const sheets = nest(PARTS.filter(p => p.t === g.t), kerf, margin);
+    totalSheets += sheets.length;
+    html += `<section class="group"><h2>${g.title}</h2>`;
+    sheets.forEach((s, i) => {
+      const out = sheetSvg(s, g.tone);
+      totalArea += out.yield * SHEET_L * SHEET_W / 1e6;
+      html += `<div class="sheet">
+        <div class="bar">
+          <h3>Sheet ${g.t} mm · ${i + 1} of ${sheets.length}</h3>
+          <span class="tag tag-${g.tone === 'accent' ? 'accent' : 'accent-2'}">${out.count} part${out.count === 1 ? '' : 's'}</span>
+          <span class="muted">${Math.round(out.yield * 100)}% of the sheet used · 2400 × 1200 mm</span>
+        </div>${out.svg}</div>`;
+    });
+    html += '</section>';
+  }
+  document.getElementById('sheets').innerHTML = html;
+  const partCount = PARTS.reduce((a, p) => a + p.qty, 0);
+  document.getElementById('stats').innerHTML = `
+    <div class="stat"><b>${totalSheets}</b><span>sheets of 2400 × 1200</span></div>
+    <div class="stat"><b>${partCount}</b><span>ply parts to cut</span></div>
+    <div class="stat"><b>${totalArea.toFixed(2)} m²</b><span>part area, ${(totalSheets * 2.88).toFixed(2)} m² bought</span></div>
+    <div class="stat"><b>${kerf} mm</b><span>kerf between parts</span></div>`;
+
+  document.getElementById('parts').innerHTML = `
+    <thead><tr><th>Ref</th><th>Part</th><th class="num">Size (mm)</th><th class="num">Qty</th><th class="num">Ply</th></tr></thead>
+    <tbody>${PARTS.map(p => `<tr>
+      <td>${p.id}</td><td>${p.name}</td>
+      <td class="num">${r1(p.w)} × ${r1(p.h)}</td>
+      <td class="num">${p.qty}</td><td class="num">${p.note || p.t} mm</td></tr>`).join('')}</tbody>`;
+}
+document.getElementById('kerf').addEventListener('change', render);
+document.getElementById('margin').addEventListener('change', render);
+document.getElementById('print').addEventListener('click', () => window.print());
+render();
+</script>
+</body>
+</html>
