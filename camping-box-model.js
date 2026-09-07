@@ -1009,7 +1009,7 @@ function allOpen() { return drawerRefs.every(d => anim['d' + d.n].target === 1);
 
 /* f = 0 upright, 1 folded flat onto the squab */
 function setSeatBacks(f) {
-  const a = -0.14 - f * (Math.PI / 2 - 0.14);
+  const a = 0.32 - f * (Math.PI / 2 + 0.32);   /* upright leans back; folding tips it forward onto the squab */
   for (const p of seatPivots) p.rotation.x = a;
 }
 
