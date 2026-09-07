@@ -1253,6 +1253,7 @@ function tick(now) {
   if (anyDrawerOpen() && !userOrbiting) holdRearView(dt);
   readRects();
   placeCallouts();
+  syncDrawerBtn();
   placePins();
   requestAnimationFrame(tick);
 }
@@ -1303,6 +1304,15 @@ if (cushionsBtn) cushionsBtn.addEventListener('click', () => {
 });
 
 const peopleBtn = document.getElementById('people-toggle');
+if (peopleBtn) peopleBtn.style.display = 'none';   /* revealed by typing "jm" */
+let jmKeys = '';
+window.addEventListener('keydown', e => {
+  if (e.metaKey || e.ctrlKey || e.altKey) return;
+  const tag = (e.target && e.target.tagName || '').toLowerCase();
+  if (tag === 'input' || tag === 'select' || tag === 'textarea') return;
+  jmKeys = (jmKeys + (e.key || '').toLowerCase()).slice(-2);
+  if (jmKeys === 'jm' && peopleBtn) { peopleBtn.style.display = ''; peopleBtn.focus(); }
+});
 if (peopleBtn) peopleBtn.addEventListener('click', () => {
   peopleShown = !peopleShown;
   peopleBtn.textContent = peopleShown ? 'Hide Julia & Mike' : 'Show Julia & Mike';
@@ -1312,6 +1322,13 @@ if (peopleBtn) peopleBtn.addEventListener('click', () => {
 });
 
 const drawerBtn = document.getElementById('drawer-toggle');
+/* with the photos up and every drawer shut, the button's only job is to clear them */
+function syncDrawerBtn() {
+  if (!drawerBtn) return;
+  if (bubblesPinned && !anyDrawerOpen()) {
+    if (drawerBtn.textContent !== 'Hide drawer info') drawerBtn.textContent = 'Hide drawer info';
+  }
+}
 function setDrawers(t) { for (const d of drawerRefs) anim['d' + d.n].target = t; anim.d5.target = t; }
 function anyDrawerOpen() { return drawerRefs.some(d => anim['d' + d.n].target === 1); }
 
@@ -1339,13 +1356,20 @@ function runDrawerSequence() {
   seqTimers.push(setTimeout(() => {
     setDrawers(0);
     bubblesPinned = true;
-    if (drawerBtn) drawerBtn.textContent = 'Open drawers';
+    if (drawerBtn) drawerBtn.textContent = 'Hide drawer info';
   }, finale + OPEN_MS + 1600));
 }
 
 if (drawerBtn) drawerBtn.addEventListener('click', () => {
   stopDemo();
   stopSequence();
+  /* the demo has run and the drawers are back in — this press just clears the photos */
+  if (bubblesPinned && !anyDrawerOpen()) {
+    bubblesPinned = false;
+    drawerBtn.textContent = 'Open drawers';
+    labels();
+    return;
+  }
   bubblesPinned = false;
   if (anyDrawerOpen()) {
     setDrawers(0);
