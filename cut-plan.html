@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <title>Cut plan — myCampal Ford Tourneo Custom</title>
-<link rel="stylesheet" href="styles.css">
+<link rel="stylesheet" href="_ds/organic-38fa8e91-4870-4476-9e42-06181d6c2941/styles.css">
 <style>
   body{margin:0;background:var(--color-bg);color:var(--color-text)}
   .page{max-width:1180px;margin:0 auto;padding:var(--space-6) var(--space-5) var(--space-8);display:flex;flex-direction:column;gap:var(--space-6)}
@@ -33,6 +33,18 @@
 </style>
 </head>
 <body>
+<template id="__bundler_thumbnail">
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120">
+    <rect width="120" height="120" fill="#f5ead8"></rect>
+    <g stroke="#c67139" stroke-width="3" fill="#eccdae">
+      <rect x="36" y="36" width="30" height="20" rx="3"></rect>
+      <rect x="70" y="36" width="14" height="20" rx="3"></rect>
+      <rect x="36" y="60" width="20" height="24" rx="3"></rect>
+      <rect x="60" y="60" width="24" height="24" rx="3"></rect>
+    </g>
+    <rect x="30" y="30" width="60" height="60" rx="5" fill="none" stroke="#201e1d" stroke-width="3"></rect>
+  </svg>
+</template>
 <div class="page">
   <div class="head">
     <div>
@@ -69,6 +81,7 @@
   <section class="group">
     <h2>Parts list</h2>
     <table class="table" id="parts"></table>
+  <p class="note">Table joint fittings, per pair of halves: two 8 mm × 60 mm hardwood dowels in the mating edges (30 mm each side, 200 mm apart), two over-centre toggle latches on the underside 110 mm apart, and two 30 mm table posts with floor and top plates. No hinge — the halves separate, so the surface stays flat.
   <p class="note">Bed panels are listed as solid boards. The model draws them slatted; if you cut them that way, substitute two 90 mm rails plus slats per panel and the sheet count drops by about half a sheet. The four drawer fronts are 22 mm faced board in the model — they are nested here on the 18 mm sheets for convenience, so cut them from their own material and treat that nest space as spare. Nesting is a guillotine shelf fit with the kerf allowed between parts, rotation permitted — grain direction is not constrained, so re-orient any part where face grain matters before cutting.</p>
   </section>
 </div>
@@ -115,6 +128,10 @@ PARTS.push(
   { t: pT, id: 'C6', name: 'Extension board leg', w: 50, h: 610, qty: 2 },
   { t: pT, id: 'C7', name: 'Backrest prop leg', w: 36, h: 440, qty: 2 },
   { t: pT, id: 'C8', name: 'Backrest prop foot', w: 60, h: 70, qty: 2 },
+);
+PARTS.push(
+  { t: T, id: 'D1', name: 'Table half (dowelled + latched pair; one doubles as bedside table)', w: 680, h: 320, qty: 2 },
+  { t: T, id: 'D2', name: 'Table floor board (velcroed to the load floor)', w: 1360, h: 340, qty: 1 },
 );
 
 /* ---- guillotine shelf nesting ---- */
