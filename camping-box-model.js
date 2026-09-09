@@ -131,26 +131,68 @@ const TOPDX = 0.46;   /* the joint between the halves, on the van's centreline *
 const HALF_W = TBL_W / 2, POST_LEN = TBL_H - 0.05;
 const HALF_DX = TOPDX - HALF_W / 2;   /* centre of half A */
 
+/* the top is a teardrop in plan: a 200 mm round nose at the outboard end, swelling
+   to a 380 mm round tail, so the narrow end lets you swing past into the seats and
+   there is no square corner anywhere on it. tdW(x) is the half-depth at distance x
+   along the full 1360 mm top — two tangent arcs joined by a straight run. */
+const TD_L = TBL_W, TD_R = 0.19, TD_NOSE = 0.10;
+const TD_cx = TD_L - TD_R, TD_cn = TD_NOSE;
+const TD_g = Math.asin((TD_R - TD_NOSE) / (TD_cx - TD_cn));
+const TD_xn = TD_cn - TD_NOSE * Math.sin(TD_g), TD_wn = TD_NOSE * Math.cos(TD_g);
+const TD_xf = TD_cx - TD_R * Math.sin(TD_g), TD_wf = TD_R * Math.cos(TD_g);
+function tdW(x) {
+  x = Math.min(Math.max(x, 0), TD_L);
+  if (x <= TD_xn) return Math.sqrt(Math.max(0, TD_NOSE * TD_NOSE - (x - TD_cn) * (x - TD_cn)));
+  if (x >= TD_xf) return Math.sqrt(Math.max(0, TD_R * TD_R - (x - TD_cx) * (x - TD_cx)));
+  return TD_wn + (TD_wf - TD_wn) * (x - TD_xn) / (TD_xf - TD_xn);
+}
+/* the split is a curve too, not a straight cut: half A ends in a shallow convex
+   tongue and half B in the matching concave socket, so neither half has a straight
+   edge on its own and the two still close to the same teardrop */
+const TD_W0 = tdW(TBL_W / 2), TD_BOW = 0.055;
+const jointOff = (z) => TD_BOW * (1 - (z / TD_W0) * (z / TD_W0));
+function teardropTop(name, x0, x1, thk, mat, parent) {
+  const N = 40, M = 20, up = [], dn = [], jt = [];
+  const nose = x0 < 0.001;   /* half A carries the nose; half B the tail */
+  const a = nose ? x0 : TBL_W / 2, b = nose ? TBL_W / 2 : x1;
+  for (let i = 0; i <= N; i++) {
+    const x = a + (b - a) * i / N, w = tdW(x);
+    up.push(new THREE.Vector2(x - x0, w));
+    if (w > 1e-4) dn.push(new THREE.Vector2(x - x0, -w));
+  }
+  for (let i = 1; i < M; i++) {
+    const z = TD_W0 - 2 * TD_W0 * i / M;
+    jt.push(new THREE.Vector2(TBL_W / 2 + jointOff(z) - x0, z));
+  }
+  const shape = new THREE.Shape(nose ? up.concat(jt, dn.reverse())
+    : up.concat(dn.reverse(), jt.reverse()));
+  const geo = new THREE.ExtrudeGeometry(shape, { depth: thk, bevelEnabled: false });
+  geo.rotateX(-Math.PI / 2); geo.translate(0, -thk / 2, 0);
+  const m = new THREE.Mesh(geo, mat); m.name = name;
+  parent.add(m);
+  return m;
+}
+
 /* the top is two loose halves, not a hinged leaf: 8 mm dowels align them and
    two over-centre toggle latches under the joint pull them together, so the
    surface stays flat and half B lifts off to work alone as a bedside table */
 function tableHalf(tag) {
   const g = new THREE.Group(); g.name = 'table_half_' + tag; tableParts.add(g);
-  const top = box('table_top_' + tag, HALF_W, 0.018, 0.32, HALF_W / 2, 0, 0, M.ply, g);
-  box('table_top_edge_' + tag, HALF_W, 0.010, 0.010, HALF_W / 2, -0.008, 0.16, M.stove, g);
+  const x0 = tag === 'a' ? 0 : HALF_W;
+  const top = teardropTop('table_top_' + tag, x0, x0 + HALF_W, 0.018, M.ply, g);
   const plate = box('table_top_plate_' + tag, 0.18, 0.012, 0.18, HALF_W / 2, -0.015, 0, M.steel, g);
   const hw = new THREE.Group(); hw.name = 'table_joint_' + tag; g.add(hw);
   for (const dz of [-0.10, 0.10]) {
     const s = dz < 0 ? 'front' : 'rear';
-    if (tag === 'b') tube('table_joint_dowel_' + s, 0.004, 0.060, 0, 0, dz, M.steel, hw, 'x');
+    if (tag === 'b') tube('table_joint_dowel_' + s, 0.004, 0.060, jointOff(dz), 0, dz, M.steel, hw, 'x');
   }
   for (const dz of [-0.055, 0.055]) {
     const s = dz < 0 ? 'front' : 'rear';
     if (tag === 'b') {
-      box('table_toggle_latch_' + s, 0.052, 0.014, 0.026, 0.034, -0.017, dz, M.latch, hw);
-      box('table_toggle_lever_' + s, 0.032, 0.008, 0.010, 0.074, -0.021, dz, M.latch, hw);
+      box('table_toggle_latch_' + s, 0.052, 0.014, 0.026, jointOff(dz) + 0.034, -0.017, dz, M.latch, hw);
+      box('table_toggle_lever_' + s, 0.032, 0.008, 0.010, jointOff(dz) + 0.074, -0.021, dz, M.latch, hw);
     } else {
-      box('table_latch_keeper_' + s, 0.024, 0.012, 0.022, HALF_W - 0.014, -0.016, dz, M.latch, hw);
+      box('table_latch_keeper_' + s, 0.024, 0.012, 0.022, HALF_W + jointOff(dz) - 0.014, -0.016, dz, M.latch, hw);
     }
   }
   return { g, top, plate, hw };

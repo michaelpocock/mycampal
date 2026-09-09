@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <title>Cut plan — myCampal Ford Tourneo Custom</title>
-<link rel="stylesheet" href="styles.css">
+<link rel="stylesheet" href="_ds/organic-38fa8e91-4870-4476-9e42-06181d6c2941/styles.css">
 <style>
   body{margin:0;background:var(--color-bg);color:var(--color-text)}
   .page{max-width:1180px;margin:0 auto;padding:var(--space-6) var(--space-5) var(--space-8);display:flex;flex-direction:column;gap:var(--space-6)}
@@ -82,6 +82,7 @@
     <h2>Parts list</h2>
     <table class="table" id="parts"></table>
   <p class="note">Table joint fittings, per pair of halves: two 8 mm × 60 mm hardwood dowels in the mating edges (30 mm each side, 200 mm apart), two over-centre toggle latches on the underside 110 mm apart, and two 30 mm table posts with floor and top plates. No hinge — the halves separate, so the surface stays flat.
+  <p class="note">D1a/D1b are listed at their rectangular blank size; both are cut to the teardrop plan profile. Set out the full 1360 mm top as one shape — a 100 mm radius nose at the outboard end and a 190 mm radius tail at the other, joined by the straight tangent between the two arcs — then split it at the 680 mm line on a curve rather than a straight cut: a shallow 55 mm bow, convex on D1a and concave on D1b, running out to nothing at both ends of the joint. Round all edges over with a 6 mm radius. Neither half has a straight edge.
   <p class="note">Bed panels are listed as solid boards. The model draws them slatted; if you cut them that way, substitute two 90 mm rails plus slats per panel and the sheet count drops by about half a sheet. The four drawer fronts are 22 mm faced board in the model — they are nested here on the 18 mm sheets for convenience, so cut them from their own material and treat that nest space as spare. Nesting is a guillotine shelf fit with the kerf allowed between parts, rotation permitted — grain direction is not constrained, so re-orient any part where face grain matters before cutting.</p>
   </section>
 </div>
@@ -130,7 +131,8 @@ PARTS.push(
   { t: pT, id: 'C8', name: 'Backrest prop foot', w: 60, h: 70, qty: 2 },
 );
 PARTS.push(
-  { t: T, id: 'D1', name: 'Table half (dowelled + latched pair; one doubles as bedside table)', w: 680, h: 320, qty: 2 },
+  { t: T, id: 'D1a', name: 'Table half — nose end (teardrop: 200 mm round nose, curve out to 300 mm at joint)', w: 680, h: 300, qty: 1 },
+  { t: T, id: 'D1b', name: 'Table half — tail end (teardrop: 300 mm at joint, curve out to 380 mm round tail; bedside table)', w: 680, h: 380, qty: 1 },
   { t: T, id: 'D2', name: 'Table floor board (velcroed to the load floor)', w: 1360, h: 340, qty: 1 },
 );
 
