@@ -113,8 +113,13 @@ function lifter(tag, sx, kit) {
   const head = new THREE.Mesh(new THREE.SphereGeometry(0.105, 20, 14), kit.skin);
   head.name = 'lifter_' + tag + '_head'; head.position.set(0, sh + 0.13, 0); g.add(head);
   if (kit.hair) {
-    const h = new THREE.Mesh(new THREE.SphereGeometry(0.112, 20, 14, 0, Math.PI * 2, 0, 1.5), M.hair || kit.legs);
+    const h = new THREE.Mesh(new THREE.SphereGeometry(0.112, 20, 14, 0, Math.PI * 2, 0, 1.5), M.hair);
     h.name = 'lifter_' + tag + '_hair'; h.position.set(0, sh + 0.135, 0); g.add(h);
+    const fall = new THREE.Mesh(new THREE.SphereGeometry(0.10, 22, 18), M.hair);
+    fall.name = 'lifter_' + tag + '_hair_fall';
+    fall.position.set(0, sh - 0.02, 0.075);
+    fall.scale.set(1.05, 1.9, 0.55);   /* long, down her back */
+    g.add(fall);
   }
   /* arms reach forward and down to the box's rear edge; the whole arm group
      travels with the box as it is lifted and set down */
@@ -302,7 +307,7 @@ function poseTable() {
   let bx, by, bz, brx, px, py, pz, psx, psy;
   if (bsP > 0) {
     const b = bsP;
-    bx = lerp(TOPDX, BS_POST_X - HALF_W, b);
+    bx = lerp(TOPDX, BS_POST_X - HALF_W / 2, b);   /* the post lands under the half's centre */
     by = lerp(TBL_H, BEDSIDE_TOP_Y, b) + 0.12 * Math.sin(Math.PI * b);
     bz = lerp(0, BS_Z, b); brx = 0;
     px = lerp(TOPDX + LEGDX, BS_POST_X, b);
@@ -327,7 +332,7 @@ function setHalfBOut(p) { remP = p; poseTable(); }        /* lifted off for the 
 function setBedsideMove(p) { bsP = p; poseTable(); }      /* half B travelling to the bedside pose */
 tFoot.position.set(TOPDX - LEGDX, 0.036, 0);
 tFoot2.position.set(TOPDX + LEGDX, 0.036, 0);
-bsFoot.position.set(BS_POST_X, BS_BASE_Y + 0.006, BS_Z);
+
 setTableStowed(false);
 
 /* ---- six fixed seats, two rows of three, facing the cab ---- */
@@ -397,6 +402,10 @@ const divX = bayW / 2 + T / 2;
 /* ---- carcass ---- */
 const carcass = new THREE.Group(); carcass.name = 'carcass'; model.add(carcass);
 box('carcass_floor', W, T, D, 0, T / 2, 0, M.ply, carcass);
+/* the bedside socket plate is screwed to the camping box's own floor, inside the
+   middle bay, so it travels with the box rather than the van */
+carcass.add(bsFoot);
+bsFoot.position.set(0, T + 0.006, D / 2 - 0.01 - 0.66);
 box('carcass_side_left',  T, H - T, D, -W / 2 + T / 2, T + (H - T) / 2, 0, M.ply, carcass);
 box('carcass_side_right', T, H - T, D,  W / 2 - T / 2, T + (H - T) / 2, 0, M.ply, carcass);
 box('carcass_divider_left',  T, H - T, D, -divX, T + (H - T) / 2, 0, M.ply, carcass);
@@ -824,8 +833,8 @@ function person(tag, x, kit) {
     shell.scale.set(1, 1, 1.12); up.add(shell);
     const mane = new THREE.Mesh(new THREE.SphereGeometry(0.10, 20, 16), M.hair);
     mane.name = 'person_' + tag + '_hair_long';
-    mane.position.set(x, MSURF + 0.045, -0.56);
-    mane.scale.set(1.35, 0.42, 1.7);   /* spread out on the cushion behind her head */
+    mane.position.set(x, MSURF + 0.042, -0.50);
+    mane.scale.set(1.4, 0.40, 2.7);   /* long hair spread out on the cushion behind her head */
     up.add(mane);
     const fringe = new THREE.Mesh(new THREE.SphereGeometry(0.075, 18, 14), M.hair);
     fringe.name = 'person_' + tag + '_fringe';
@@ -879,6 +888,11 @@ function seatedPerson(tag, seatTag, kit) {
     const shell = new THREE.Mesh(new THREE.SphereGeometry(0.103, 26, 20, 0, Math.PI * 2, 1.15, Math.PI - 1.15), M.hair);
     shell.name = 'seated_' + tag + '_hair_shell';
     shell.position.set(0, 1.14, 0.09); shell.rotation.x = Math.PI / 2; shell.scale.set(1, 1.12, 1); g.add(shell);
+    const fall = new THREE.Mesh(new THREE.SphereGeometry(0.098, 22, 18), M.hair);
+    fall.name = 'seated_' + tag + '_hair_fall';
+    fall.position.set(0, 1.00, 0.125);
+    fall.scale.set(1.05, 1.85, 0.55);   /* down her back, past the shoulders */
+    g.add(fall);
   } else {
     const cap = new THREE.Mesh(new THREE.SphereGeometry(0.096, 20, 16, 0, Math.PI * 2, 0, Math.PI * 0.55), M.hair);
     cap.name = 'seated_' + tag + '_hair'; cap.position.set(0, 1.14, 0.07); cap.rotation.x = 0.55; g.add(cap);
@@ -986,6 +1000,7 @@ const smooth = t => t * t * (3 - 2 * t);
 let folded = 1;
 let peopleShown = false;   /* hidden until the button asks for them */
 let reclined = 0;
+var fitP = 1;   /* how far the box is fitted; set by setFit each frame */
 let hatchOut = false;   /* the middle-bay lid and the centre aft pad lift out together */
 let cushionsOut = false;   /* every mattress pad taken out of the van */
 let uiReady = false;
@@ -995,7 +1010,9 @@ function applyHatch() {
   const out = hatchOut;
   topPanel.visible = !out;
   hatchRail.visible = !out;
-  midDoor.visible = !out;   /* the bay has to read as a clear opening */
+  /* gone with the box — but only as the carry-out actually takes it away
+     (var, so it reads safely on the first pass before setFit exists) */
+  midDoor.visible = !out && fitP > 0.002;   /* the bay has to read as a clear opening */
   for (const s of hatchSlats) s.visible = !out;
   for (const s of stackSlats) s.visible = !(out && folded > 0.5);   /* folded, these lie over the opening too */
   const stowedOver = out && folded > 0.5;   /* the stow stack sits right on the opening */
@@ -1185,6 +1202,7 @@ function setSeatBacks(f) {
 }
 
 let fitReady = false;
+let boxRemoved = () => false;
 const anim = {
   d1: { p: 0, target: 0, ms: 900, apply: p => { setOut(drawerRefs[0], ease(p) * OPEN); dollyWithDrawer(p); } },
   d2: { p: 0, target: 0, ms: 900, apply: p => setOut(drawerRefs[1], ease(p) * OPEN) },
@@ -1197,8 +1215,8 @@ const anim = {
   flaps:  { p: 1, target: 1, ms: 900, apply: p => setFlaps(ease(p)) },
   seats:  { p: 0, target: 0, ms: 1400, apply: p => setSeatBacks(ease(p)) },
   recline: { p: 0, target: 0, ms: 1200, apply: p => setRecline(ease(p)) },
-  fit: { p: 1, target: 1, ms: 3200, apply: p => { if (fitReady) setFit(p); } },
-  doors:  { p: 1, target: 1, ms: 1600, apply: p => {
+  fit: { p: 0, target: 0, ms: 3200, apply: p => { if (fitReady) setFit(p); } },
+  doors:  { p: 0, target: 0, ms: 1600, apply: p => {
     const e = ease(p);
     for (const d of doorGroups) d.position.z = e * DL;
     tailgate.rotation.x = -e * 1.35;
@@ -1262,11 +1280,25 @@ function readRects() {
   if (!cv || !wrap) { frameRects = null; return; }
   frameRects = { r: cv.getBoundingClientRect(), w: wrap.getBoundingClientRect() };
 }
+const boxBtnEl = document.getElementById('box-toggle');
 function placePins() {
   if (!pinHost || !frameRects) return;
   const cam = stage._camera;
   if (!cam) return;
   const r = frameRects.r, wr = frameRects.w;
+  /* the fit/remove button rides with the tailgate opening */
+  if (boxBtnEl) {
+    tailgate.updateWorldMatrix(true, false);
+    pinPt.set(0, -0.30, 0.10).applyMatrix4(tailgate.matrixWorld).project(cam);
+    const bx = (pinPt.x * 0.5 + 0.5) * r.width + (r.left - wr.left);
+    const by = (-pinPt.y * 0.5 + 0.5) * r.height + (r.top - wr.top);
+    /* only once the box is fully out and still — never mid-animation */
+    const settled = anim.fit.p < 0.002 && anim.fit.target === 0;
+    const on = pinPt.z < 1 && boxBtnEl.style.display !== 'none' && settled;
+    boxBtnEl.style.transform = 'translate(' + Math.round(bx) + 'px,' + Math.round(by) + 'px) translate(-50%,-50%)';
+    boxBtnEl.style.opacity = on ? '1' : '0';
+    boxBtnEl.style.pointerEvents = on ? '' : 'none';
+  }
   const SEP = 34;
   const pts = [];
   for (const d of pinRefs) {
@@ -1453,7 +1485,7 @@ anim.bed.apply(1);
 anim.flaps.apply(1);
 anim.seats.apply(0);
 anim.recline.apply(0);
-anim.doors.apply(1);
+anim.doors.apply(0);
 requestAnimationFrame(tick);
 
 function wire(id, a, labels) {
@@ -1704,16 +1736,17 @@ if (seatsOutBtn) seatsOutBtn.addEventListener('click', () => {
   reframe();
 });
 
-let tableStowed = false;
+let tableStowed = true;   /* the van starts empty — the table travels stowed */
 function applyTableMode() {
   /* stowing wins in every mode — in the lounger it takes the bedside table away too */
   const bedside = anim.recline.target === 1 && !tableStowed;
   setTableStowed(tableStowed, bedside);
   anim.bside.target = bedside ? 1 : 0;   /* half B travels to the bedside pose */
-  tableUnit.visible = vanSolid.visible || !tableStowed;
+  tableUnit.visible = boxRemoved() ? !tableStowed : (vanSolid.visible || !tableStowed);
   if (tableBtn) tableBtn.textContent = tableStowed ? 'Set up table' : 'Stow table';
 }
 const tableBtn = document.getElementById('table-toggle');
+applyTableMode();   /* start stowed */
 if (tableBtn) tableBtn.addEventListener('click', () => {
   tableStowed = !tableStowed;
   applyTableMode();
@@ -1729,10 +1762,12 @@ if (tableBtn) tableBtn.addEventListener('click', () => {
 
 const vanBtn = document.getElementById('van-toggle');
 const boxBtn = document.getElementById('box-toggle');
+const boxRemoveBtn = document.getElementById('box-remove');
 /* everything that is the camping box rather than the van */
 const boxGroups = model.children.filter(c => c !== vanSolid);
 const boxBase = boxGroups.map(g => g.position.clone());
-let boxOut = false;
+let boxOut = true;   /* the van starts empty, box on the ground behind it */
+boxRemoved = () => boxOut;
 
 /* p = 0 the box is on the ground behind the van · 1 fitted in place.
    0–0.55 Julia and Mike carry it to the sill · 0.55–0.8 it slides in ·
@@ -1741,6 +1776,7 @@ const CARRY_Y = 0.22, CARRY_Z = 1.30;
 function setFit(p) {
   const sm = t => t * t * (3 - 2 * t);
   const a = clamp01(p / 0.55), b = clamp01((p - 0.55) / 0.25), c = clamp01((p - 0.8) / 0.2);
+  fitP = p;
   const z = a < 1 ? 0.30 + (CARRY_Z - 0.30) * (1 - sm(a)) : 0.30 * (1 - sm(b));
   const y = CARRY_Y * (1 - sm(c));
   for (let i = 0; i < boxGroups.length; i++) {
@@ -1765,7 +1801,9 @@ function setFit(p) {
 }
 function applyView() {
   if (vanBtn) vanBtn.textContent = vanSolid.visible ? 'Hide van' : 'Show van';
-  if (boxBtn) boxBtn.textContent = boxOut ? 'Fit camping box' : 'Remove camping box';
+  /* fitting is offered on the tailgate; removing lives in the menu */
+  if (boxBtn) boxBtn.style.display = boxOut ? '' : 'none';
+  if (boxRemoveBtn) boxRemoveBtn.style.display = boxOut ? 'none' : '';
   /* with the box out there is nothing to show the van against — keep the van */
   if (boxOut && !vanSolid.visible) vanSolid.visible = true;
   if (pinHost) pinHost.style.display = boxOut ? 'none' : '';
@@ -1777,10 +1815,12 @@ function applyView() {
   }
   /* Julia & Mike stay hidden until the "jm" easter egg is typed */
   if (peopleBtn) peopleBtn.style.display = (boxOut || !peopleRevealed) ? 'none' : '';
-  if (vanBtn) vanBtn.style.display = boxOut ? 'none' : '';
+
   /* the set-up table belongs to the layout, not the van — keep it when the van goes */
-  /* the table stays in the van when the box comes out — it stands on its own board */
-  tableUnit.visible = vanSolid.visible || !tableStowed || anim.recline.target === 1;
+  /* the table stays in the van when the box comes out, but only if it is set up —
+     the board and socket plates go out with the box otherwise */
+  const tableUp = !tableStowed || anim.recline.target === 1;
+  tableUnit.visible = boxOut ? tableUp : (vanSolid.visible || tableUp);
   /* van-only controls have nothing to act on once the van is hidden */
   for (const id of ['doors-toggle', 'seats-out-toggle', 'front-seats-out-toggle']) {
     const b = document.getElementById(id);
@@ -1801,8 +1841,8 @@ function applyView() {
 }
 applyView();
 fitReady = true;
-setFit(1);
-if (boxBtn) boxBtn.addEventListener('click', () => {
+setFit(0);
+function toggleBox() {
   boxOut = !boxOut;
   stopDemo(); stopSequence();
   let wait = 0;
@@ -1826,7 +1866,24 @@ if (boxBtn) boxBtn.addEventListener('click', () => {
   applyView();
   if (wait > 0) seqTimers.push(setTimeout(() => { anim.fit.target = boxOut ? 0 : 1; }, wait));
   else anim.fit.target = boxOut ? 0 : 1;
-});
+  /* the table goes up with the box, and travels stowed when it comes out */
+  seqTimers.push(setTimeout(() => {
+    tableStowed = boxOut;
+    applyTableMode();
+    labels();
+    applyView();
+  }, wait + (boxOut ? 0 : anim.fit.ms)));
+  /* once the box is out, shut the van up and stand the seat backs upright */
+  if (boxOut) {
+    seqTimers.push(setTimeout(() => {
+      anim.doors.target = 0;
+      anim.seats.target = 0;
+      labels();
+    }, wait + anim.fit.ms + 200));
+  }
+}
+if (boxBtn) boxBtn.addEventListener('click', toggleBox);
+if (boxRemoveBtn) boxRemoveBtn.addEventListener('click', toggleBox);
 if (vanBtn) vanBtn.addEventListener('click', () => {
   vanSolid.visible = !vanSolid.visible;
   applyView();

@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <title>myCampal — Ford Tourneo Custom</title>
-<link rel="stylesheet" href="styles.css?v1.7-1789109907829">
+<link rel="stylesheet" href="styles.css?v1.8-1789114461081">
 <script type="importmap">
 {
   "imports": {
@@ -50,6 +50,7 @@
   .callout .bubble:hover{transform:scale(1.85);box-shadow:var(--shadow-lg),0 0 0 1px var(--color-neutral-300)}
   .callout:has(.bubble:hover){z-index:4}
   .callout img{width:100%;height:100%;object-fit:cover;display:block;filter:saturate(.82) contrast(.96) brightness(1.03)}
+  #box-toggle{position:absolute;left:0;top:0;z-index:5;white-space:nowrap;transform:translate(-50%,-50%);box-shadow:var(--shadow-lg)}
   #pins .pin{position:absolute;left:0;top:0;width:30px;height:30px;border-radius:50%;background:var(--color-accent);color:var(--color-bg);font-family:var(--font-heading);font-size:15px;display:flex;align-items:center;justify-content:center;box-shadow:var(--shadow-sm);opacity:0;transition:opacity .25s;pointer-events:none}
   .callout .badge{position:absolute;left:-6px;top:-6px;z-index:2;width:36px;height:36px;border-radius:50%;background:var(--color-accent);color:var(--color-bg);font-family:var(--font-heading);font-size:17px;display:flex;align-items:center;justify-content:center;border:3px solid var(--color-bg);box-shadow:var(--shadow-sm)}
   .callout .dot{position:absolute;border-radius:50%;background:var(--color-bg);box-shadow:var(--shadow-sm)}
@@ -64,7 +65,7 @@
     <div>
       <h1>myCampal Ford Tourneo Custom</h1>
     </div>
-    <span class="tag tag-outline" style="align-self:center">v1.7</span>
+    <span class="tag tag-outline" style="align-self:center">v1.8</span>
     <button id="menu-toggle" class="btn btn-secondary" type="button" aria-expanded="false" aria-controls="legend">Controls</button>
     <div class="legend" id="legend">
       <span class="group">
@@ -81,14 +82,15 @@
         <button id="seats-out-toggle" class="btn btn-secondary" type="button">Remove 4 seats</button>
         <button id="front-seats-out-toggle" class="btn btn-secondary" type="button">Remove 2 seats</button>
       </span>
+      <button id="box-remove" class="btn btn-ghost" type="button">Remove camping box</button>
       <button id="van-toggle" class="btn btn-ghost" type="button">Hide van</button>
-      <button id="box-toggle" class="btn btn-ghost" type="button">Remove camping box</button>
-      <a class="btn btn-primary" href="cut-plan.html?v1.7-1789109907829">Cut plan</a>
+      <a class="btn btn-primary" href="cut-plan.html?v1.8-1789114461081">Cut plan</a>
     </div>
   </div>
   <div class="stage-wrap">
     <three-d-stage name="tourneo-camping-box" autorotate></three-d-stage>
     <div id="pins"></div>
+    <button id="box-toggle" class="btn btn-primary" type="button">Fit camping box</button>
     <figure class="callout" data-drawer="1">
       <span class="badge">1</span>
       <div class="bubble"><img src="assets/drawer-1-kitchen.png" alt="Photograph of a camping box kitchen drawer with a twin-burner stove and side table"></div>
@@ -121,9 +123,9 @@
     </figure>
   </div>
 </div>
-<script src="./image-slot.js?v1.7-1789109907829"></script>
-<script src="./three-d-stage.js?v1.7-1789109907829"></script>
-<script type="module" src="./camping-box-model.js?v1.7-1789109907829"></script>
+<script src="./image-slot.js?v1.8-1789114461081"></script>
+<script src="./three-d-stage.js?v1.8-1789114461081"></script>
+<script type="module" src="./camping-box-model.js?v1.8-1789114461081"></script>
 <script>
   /* delegated from the document so it works however the page is loaded */
   (function () {
