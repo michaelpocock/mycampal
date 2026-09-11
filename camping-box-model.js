@@ -447,6 +447,13 @@ for (const [side, sx] of [['left', -1], ['right', 1]]) {
   box('carcass_rear_rail_' + side, DECK_W, 0.05, T, sx * (W + bayW) / 4, H - T - 0.025, D / 2 - T / 2, M.ply_dark, carcass);
 }
 const hatchRail = box('carcass_rear_rail_middle', bayW, 0.05, T, 0, H - T - 0.025, D / 2 - T / 2, M.ply_dark, carcass);
+/* cross bar on the cab-end face, standing proud of the carcass — the unfolded
+   bed panels land on it once they are run out over the drawers */
+box('carcass_bed_support_bar', W, 0.05, 0.06, 0, H - 0.025, -D / 2 - 0.03 + T, M.ply, carcass);
+for (const sx of [-1, 1]) {
+  box('bed_support_bracket_' + (sx < 0 ? 'left' : 'right'), 0.04, 0.10, 0.014,
+      sx * (W / 2 - 0.05), H - 0.05, -D / 2 + T + 0.007, M.steel, carcass);
+}
 /* floor-mount cleats */
 box('cleat_left',  0.05, 0.03, D - 0.10, -W / 2 + 0.06, 0.0155, 0, M.steel, carcass);
 /* shelf between the stacked drawers in each side bay */
@@ -705,8 +712,36 @@ function softPlate(name, w, d, thk, r, mat, parent) {
   parent.add(m);
   return m;
 }
+/* the two aft sections are built the other way round: cross rails at each end and
+   slats running fore-and-aft, so the slide-out middle rides on its long edges */
+const LENGTHWISE = ['bed_panel_rear', 'bed_panel_mid'];
 function panel(name, len, zCenter, y, parent, plain) {
   const g = new THREE.Group(); g.name = name;
+  if (LENGTHWISE.includes(name)) {
+    /* only the outer rail on each panel — the facing edges interleave, so a rail
+       there would foul the other panel's fingers */
+    const isRear = name === 'bed_panel_rear', sz = isRear ? 1 : -1;
+    const rz = zCenter + sz * (len / 2 - 0.025), rn = name + '_rail_' + (isRear ? 'aft' : 'fore');
+    /* cut at the middle bay so nothing crosses the hatch opening */
+    const rW = (bedW - bayW) / 2;
+    for (const rx of [-1, 1]) {
+      box(rn + (rx < 0 ? '_left' : '_right'), rW, pT, 0.05, rx * (bayW + rW) / 2, y, rz, M.ply, g);
+    }
+    const rMid = box(rn + '_middle', bayW - 0.006, pT, 0.05, 0, y, rz, M.ply, g);
+    (isRear ? hatchSlats : stackSlats).push(rMid);
+    const sideW = (bedW - 0.02 - bayW) / 2;
+    /* fingers reach past the panel's own edge so the two sets overlap when nested */
+    const sd = len - 0.05 + 0.09, sz0 = zCenter - sz * 0.045;
+    for (const [zoneW, zoneX, inBay] of [[sideW, -(bayW + sideW) / 2, false], [bayW, 0, true], [sideW, (bayW + sideW) / 2, false]]) {
+      const pitch = zoneW / 3, sw = pitch / 2 - 0.008;
+      for (let i = 0; i < 3; i++) {
+        const x = zoneX - zoneW / 2 + pitch * (i + (isRear ? 0.25 : 0.75));
+        const s = box(name + '_slat_' + (inBay ? 'bay_' : 'side_') + (i + 1) + '_' + (x < 0 ? 'l' : 'r'),
+                      sw, pT, sd, x, y, sz0, M.ply_dark, g);
+        if (inBay) (isRear ? hatchSlats : stackSlats).push(s);
+      }
+    }
+  } else {
   box(name + '_rail_left',  0.05, pT, len, -bedW / 2 + 0.025, y, zCenter, M.ply, g);
   box(name + '_rail_right', 0.05, pT, len,  bedW / 2 - 0.025, y, zCenter, M.ply, g);
   const slats = 5;
@@ -725,6 +760,7 @@ function panel(name, len, zCenter, y, parent, plain) {
       continue;
     }
     box(name + '_slat_' + (i + 1), bedW - 0.12, pT, sd, 0, y, z, M.ply_dark, g);
+  }
   }
   /* hinged flaps that fold out over the wheel arches
      (no left-hand flap at the tailgate end — the van's vent sits there) */
@@ -972,6 +1008,9 @@ for (const sx of [-1, 1]) {
 const CUSHION_Y = bedY + pT / 2 + cT / 2 + 0.002;
 const STACK_BASE = bedY + LIFT * 2 + pT / 2 + 0.004;
 const RAISE = 0.36;
+/* the middle panel and its folded cab panel slide back in under the aft panel */
+const STOW_DY = -(LIFT + pT + 0.008);
+const FINGER_OVER = 0.065;   /* how far the interleaving fingers reach past their own panel edge */
 const REAR_W = (bedW - 0.02) / 3;
 const cushionSpec = [
   { tag: 'rear_a', layer: 0, w: REAR_W, x: -REAR_W, len: pL, z: hingeA + pL / 2, zStack: hingeA + pL / 2 },
@@ -1028,15 +1067,21 @@ function setFold(f) {
   if (fp > 0.5 && uiReady && anim.bed.target === 1) hatchOut = false;   /* stowing — the panel goes back in first */
   for (const g of seated) g.visible = peopleShown && f > 0.98;
   for (const g of occupants) g.visible = peopleShown && fp < 0.02;
-  const th = Math.PI * fp, k = (1 - Math.cos(th)) / 2;
-  pivotA.rotation.x = th; pivotA.position.y = bedY + LIFT * k;
-  pivotB.rotation.x = -th; pivotB.position.y = -LIFT * k;   /* reverse fold — the top panel lands face-up */
-  legs.rotation.x = -Math.PI / 2 * Math.min(1, fp * 1.5);
-  legs.visible = fp < 0.8 && reclined < 0.5;
-  legs2.rotation.x = -Math.PI / 2 * Math.min(1, fp * 1.5);
-  legs2.visible = fp < 0.8;
-  for (const pv of brLegs) pv.visible = fp < 0.5 && reclined > 0.001;
-  overlayPanel.visible = fp < 0.5;
+  /* two moves, in sequence: the middle panel runs out of the carcass on drawer
+     slides, then the cab-end panel unfolds off its forward edge */
+  const t = smooth(clamp01(fp / 0.5));        /* 0 cab panel out flat, 1 folded back onto the middle */
+  const s = smooth(clamp01((fp - 0.5) / 0.5)); /* 0 middle run out, 1 stowed inside the box */
+  const th = Math.PI * t, k = (1 - Math.cos(th)) / 2;
+  pivotA.rotation.x = 0;
+  pivotA.position.z = hingeA + (pL - FINGER_OVER) * s;   /* stowed, pull in so no finger overhangs the drawer fronts */
+  pivotA.position.y = bedY + STOW_DY * s;
+  pivotB.rotation.x = th; pivotB.position.y = LIFT * k;   /* folds up and over, landing on top of the middle panel */
+  legs.rotation.x = -Math.PI / 2 * Math.min(1, t * 1.5);
+  legs.visible = t < 0.8 && reclined < 0.5;
+  legs2.rotation.x = -Math.PI / 2 * Math.min(1, t * 1.5);
+  legs2.visible = t < 0.8;
+  for (const pv of brLegs) pv.visible = t < 0.5 && reclined > 0.001;
+  overlayPanel.visible = t < 0.5;
   overlayLegs.visible = reclined >= 0.5;
 
 
@@ -1211,7 +1256,7 @@ const anim = {
   d5: { p: 0, target: 0, ms: 1600, apply: p => setDoor(ease(p)) },
   leaf: { p: 0, target: 0, ms: 1100, apply: p => setHalfBOut(ease(p)) },
   bside: { p: 0, target: 0, ms: 1500, apply: p => setBedsideMove(ease(p)) },
-  bed:    { p: 1, target: 1, ms: 2200, apply: p => setFold(ease(p)) },
+  bed:    { p: 1, target: 1, ms: 3400, apply: p => setFold(ease(p)) },
   flaps:  { p: 1, target: 1, ms: 900, apply: p => setFlaps(ease(p)) },
   seats:  { p: 0, target: 0, ms: 1400, apply: p => setSeatBacks(ease(p)) },
   recline: { p: 0, target: 0, ms: 1200, apply: p => setRecline(ease(p)) },
@@ -1844,7 +1889,7 @@ function setFit(p) {
     g.visible = p > 0.002;
   }
   /* they stay with the box for the whole move, including the set-down */
-  lifters.visible = p > 0.002 && p < 0.999;
+  lifters.visible = false;   /* the box moves on its own — no carriers shown */
   /* carrying it at the sides out on the tarmac, then in behind the tailgate,
      shoulder to shoulder, pushing it through the rear opening */
   const lx = (W / 2 + 0.26) + (0.44 - (W / 2 + 0.26)) * sm(a);
