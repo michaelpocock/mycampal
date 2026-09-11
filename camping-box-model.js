@@ -84,6 +84,21 @@ for (const [side, sx] of [['left', -1], ['right', 1]]) {
   S('arch_box_' + side, aw, 0.30, 0.86, sx * (VWA / 2 + aw / 2), 0.15, -0.24, M.trim);
   S('arch_top_' + side, aw, 0.02, 0.86, sx * (VWA / 2 + aw / 2), 0.30, -0.24, M.trim_dk);
 }
+/* ---- nearside rear air-conditioning housing: a trimmed box over the arch at the
+   tailgate end, with a louvred return-air panel on its inboard face. Sits flush
+   with the arch, so the camping box still clears it. ---- */
+{
+  const acW = VW / 2 - VWA / 2, acH = 0.72, acL = 0.60;
+  const acX = -(VWA / 2 + acW / 2), acZ = TAIL - 0.02 - acL / 2;
+  S('ac_housing', acW, acH, acL, acX, acH / 2, acZ, M.trim);
+  S('ac_housing_top', acW, 0.02, acL, acX, acH + 0.01, acZ, M.trim_dk);
+  /* louvred vent panel, inboard face */
+  const vx = -(VWA / 2) + 0.006;
+  S('ac_vent_frame', 0.012, 0.30, 0.34, vx, 0.46, acZ, M.trim_dk);
+  for (let i = 0; i < 7; i++) {
+    S('ac_vent_slat_' + (i + 1), 0.016, 0.022, 0.32, vx - 0.002, 0.34 + i * 0.040, acZ, M.trim);
+  }
+}
 S('bulkhead_panel', VW, VH, 0.03, 0, VH / 2, CAB + 0.015, M.trim);
 S('rear_sill_step', 1.60, 0.05, 0.18, 0, -0.025, TAIL + 0.09, M.trim_dk);
 S('rear_sill_trim', 1.60, 0.02, 0.05, 0, 0.005, TAIL + 0.02, M.trim);
@@ -120,7 +135,8 @@ const TBLZ = -1.22, TBLX = -0.46, TBL_H = 0.62;
 const TBL_W = 1.36, LEGDX = 0.34;   /* as wide as the three seats it faces, on two posts */
 const tableUnit = new THREE.Group(); tableUnit.name = 'pedestal_table'; model.add(tableUnit);
 const tableBoard = new THREE.Group(); tableBoard.name = 'table_floor_board'; tableUnit.add(tableBoard);
-box('table_base_board', TBL_W, 0.018, 0.34, 0, 0.015, TBLZ, M.ply, tableBoard);
+const baseBoard = roundPlate('table_base_board', TBL_W, 0.34, 0.018, 0.085, M.ply, tableBoard);
+baseBoard.position.set(0, 0.015, TBLZ);
 for (const dx of [-0.34, 0.34]) {
   box('velcro_strip_' + (dx < 0 ? 'left' : 'right'), 0.075, 0.006, 0.30, dx, 0.003, TBLZ, M.stove, tableBoard);
 }
@@ -151,6 +167,23 @@ function tdW(x) {
    edge on its own and the two still close to the same teardrop */
 const TD_W0 = tdW(TBL_W / 2), TD_BOW = 0.055;
 const jointOff = (z) => TD_BOW * (1 - (z / TD_W0) * (z / TD_W0));
+function roundPlate(name, w, d, thk, r, mat, parent) {
+  const s = new THREE.Shape(), hw = w / 2 - r, hd = d / 2 - r;
+  s.moveTo(-hw - r, -hd);
+  s.lineTo(-hw - r, hd);
+  s.absarc(-hw, hd, r, Math.PI, Math.PI / 2, true);
+  s.lineTo(hw, hd + r);
+  s.absarc(hw, hd, r, Math.PI / 2, 0, true);
+  s.lineTo(hw + r, -hd);
+  s.absarc(hw, -hd, r, 0, -Math.PI / 2, true);
+  s.lineTo(-hw, -hd - r);
+  s.absarc(-hw, -hd, r, -Math.PI / 2, -Math.PI, true);
+  const geo = new THREE.ExtrudeGeometry(s, { depth: thk, bevelEnabled: false, curveSegments: 8 });
+  geo.rotateX(-Math.PI / 2); geo.translate(0, -thk / 2, 0);
+  const m = new THREE.Mesh(geo, mat); m.name = name;
+  parent.add(m);
+  return m;
+}
 function teardropTop(name, x0, x1, thk, mat, parent) {
   const N = 40, M = 20, up = [], dn = [], jt = [];
   const nose = x0 < 0.001;   /* half A carries the nose; half B the tail */
@@ -199,22 +232,26 @@ function tableHalf(tag) {
 }
 const halfA = tableHalf('a'), halfB = tableHalf('b');
 const tPost = tube('table_post', 0.030, POST_LEN, 0, 0, 0, M.steel, tableParts, 'y');
-const tFoot = box('table_foot_plate', 0.16, 0.012, 0.16, 0, 0.030, 0, M.steel, tableParts);
+const tFoot = roundPlate('table_foot_plate', 0.16, 0.16, 0.012, 0.045, M.steel, tableParts);
 const tPost2 = tube('table_post_2', 0.030, POST_LEN, 0, 0, 0, M.steel, tableParts, 'y');
-const tFoot2 = box('table_foot_plate_2', 0.16, 0.012, 0.16, 0, 0.030, 0, M.steel, tableParts);
+const tFoot2 = roundPlate('table_foot_plate_2', 0.16, 0.16, 0.012, 0.045, M.steel, tableParts);
+/* the posts lift out; the plates they socket into stay put — two screwed to the
+   floor board, a third fixed in the middle bay for the bedside pose */
+const bsFoot = roundPlate('table_foot_plate_bedside', 0.16, 0.16, 0.012, 0.045, M.steel, tableParts);
 
 /* poses: set up on its board, stowed behind the seats, or — for half B alone —
    up on the wheel-arch top as a bedside table when the lounger is out */
 const STOW_Z = -2.26 - TBLZ, POST_X = -0.75 - TBLX, POST_Z = -2.14 - TBLZ;
 const BEDSIDE_TOP_Y = 0.88;
-const BS_POST_X = 0.78 - TBLX, BS_Z = -0.31 - TBLZ;   /* beside the bed, on the arch top, aligned with the cushion joint */
-const BS_BASE_Y = 0.31;   /* stands on the wheel-arch top, not the load floor */
+const BS_POST_X = 0 - TBLX, BS_Z = (D / 2 - 0.01 - 0.66 + BOXZ) - TBLZ;   /* centred in the middle bay, on the cushion joint so the post drops between the pads */
+const BS_BASE_Y = 0.018;   /* foot plate stands on the carcass floor inside the gap */
 const BS_LEN = BEDSIDE_TOP_Y - 0.026 - BS_BASE_Y;
 const lerp = (a, b, t) => a + (b - a) * t;
 
 let tblStow = false, tblBedside = false, remP = 0, bsP = 0;
 function poseTable() {
   tableBoard.visible = bsP < 0.5;
+  tFoot.visible = tFoot2.visible = tableBoard.visible;   /* screwed to the board */
   const away = tblStow ? 1 : 0;
   /* --- half A: stays on the board unless the whole table is put away --- */
   const a = Math.max(away, bsP);
@@ -223,10 +260,9 @@ function poseTable() {
     lerp(TBL_H, 0.30, a) + 0.09 * Math.sin(Math.PI * a), lerp(0, STOW_Z, a));
   halfA.plate.visible = a < 0.5;
   tPost.position.set(lerp(TOPDX - LEGDX, POST_X, a), lerp(0.036 + POST_LEN / 2, 0.32, a), lerp(0, POST_Z, a));
-  tFoot.position.set(lerp(TOPDX - LEGDX, POST_X, a), 0.036, lerp(0, POST_Z, a));
   /* --- half B: fitted, lifted out and stowed, or standing as the bedside table --- */
   const s = Math.max(away, remP);
-  let bx, by, bz, brx, px, py, pz, fy, psx, psy;
+  let bx, by, bz, brx, px, py, pz, psx, psy;
   if (bsP > 0) {
     const b = bsP;
     bx = lerp(TOPDX, BS_POST_X - HALF_W, b);
@@ -234,7 +270,7 @@ function poseTable() {
     bz = lerp(0, BS_Z, b); brx = 0;
     px = lerp(TOPDX + LEGDX, BS_POST_X, b);
     py = lerp(0.036 + POST_LEN / 2, BS_BASE_Y + 0.012 + BS_LEN / 2, b);
-    pz = lerp(0, BS_Z, b); fy = lerp(0.036, BS_BASE_Y + 0.006, b);
+    pz = lerp(0, BS_Z, b);
     psx = lerp(1, 0.6, b); psy = lerp(1, BS_LEN / POST_LEN, b);
   } else {
     bx = lerp(TOPDX, TOPDX + 0.02, s);
@@ -242,17 +278,19 @@ function poseTable() {
     bz = lerp(0, STOW_Z, s); brx = -Math.PI / 2 * s;
     px = lerp(TOPDX + LEGDX, POST_X + 0.09, s);
     py = lerp(0.036 + POST_LEN / 2, 0.32, s);
-    pz = lerp(0, POST_Z, s); fy = 0.036;
+    pz = lerp(0, POST_Z, s);
     psx = 1; psy = 1;
   }
   halfB.g.rotation.x = brx; halfB.g.position.set(bx, by, bz);
   halfB.plate.visible = brx > -0.1;
   tPost2.scale.set(psx, psy, psx); tPost2.position.set(px, py, pz);
-  tFoot2.position.set(px, fy, pz);
 }
 function setTableStowed(stowed, bedside) { tblStow = stowed; tblBedside = bedside; poseTable(); }
 function setHalfBOut(p) { remP = p; poseTable(); }        /* lifted off for the two-seat layout */
 function setBedsideMove(p) { bsP = p; poseTable(); }      /* half B travelling to the bedside pose */
+tFoot.position.set(TOPDX - LEGDX, 0.036, 0);
+tFoot2.position.set(TOPDX + LEGDX, 0.036, 0);
+bsFoot.position.set(BS_POST_X, BS_BASE_Y + 0.006, BS_Z);
 setTableStowed(false);
 
 /* ---- six fixed seats, two rows of three, facing the cab ---- */
@@ -339,7 +377,24 @@ for (const [side, sx] of [['left', -1], ['right', 1]]) {
 }
 const topPanel = new THREE.Group(); topPanel.name = 'carcass_top_panel_removable';
 topPanel.position.set(0, H - T / 2, 0); carcass.add(topPanel);
-box('top_panel', bayW - 0.004, T, D - 0.004, 0, 0, 0, M.ply_dark, topPanel);
+/* the hatch carries a bored hole on the cushion joint so the bedside post can
+   drop through it — the table fits with the panel still in place */
+const POST_HOLE_Z = D / 2 - 0.01 - 0.66;   /* = hingeA: the rear/mid panel and cushion joint */
+const POST_HOLE_R = 0.030;
+{
+  const w = bayW - 0.004, d = D - 0.004;
+  const sh = new THREE.Shape();
+  sh.moveTo(-w / 2, -d / 2); sh.lineTo(w / 2, -d / 2); sh.lineTo(w / 2, d / 2);
+  sh.lineTo(-w / 2, d / 2); sh.closePath();
+  const hole = new THREE.Path();
+  hole.absarc(0, -POST_HOLE_Z, POST_HOLE_R, 0, Math.PI * 2, true);
+  sh.holes.push(hole);
+  const geo = new THREE.ExtrudeGeometry(sh, { depth: T, bevelEnabled: false });
+  geo.rotateX(-Math.PI / 2); geo.translate(0, -T / 2, 0);
+  const p = new THREE.Mesh(geo, M.ply_dark); p.name = 'top_panel'; topPanel.add(p);
+  const lin = new THREE.Mesh(new THREE.CylinderGeometry(POST_HOLE_R, POST_HOLE_R, T + 0.004, 24, 1, true), M.steel);
+  lin.name = 'top_panel_post_liner'; lin.position.set(0, 0, POST_HOLE_Z); topPanel.add(lin);
+}
 box('top_panel_finger_slot', 0.09, 0.008, 0.022, 0, T / 2 - 0.003, D / 2 - 0.07, M.stove, topPanel);
 /* the rear rail is cut at the middle bay so the hatch opening is clear through */
 for (const [side, sx] of [['left', -1], ['right', 1]]) {
@@ -542,6 +597,8 @@ for (const sy of [-1, 1]) {
   box('mid_door_cleat_' + (sy < 0 ? 'lower' : 'upper'), mdW - 0.06, 0.022, 0.020, 0, sy * (mdH / 2 - 0.05), -T / 2 - 0.010, M.trim_dk, doorBoard);
 }
 tube('mid_door_pull', 0.010, 0.14, 0, 0, T / 2 + 0.012, M.steel, doorBoard, 'x');
+/* the middle-bay door gets a pin too, in the same style, keyed to its own anim */
+const doorPinRef = { n: 5, g: doorBoard, local: [0, 0, T / 2 + 0.02] };
 
 const DOOR_Y = T + (H - T) / 2, DOOR_Z = D / 2 - T / 2;
 const DOOR_OUT = DOOR_Z + 0.42, SHELF_Z = D / 2 + 0.7 * mdH - mdH / 2;   /* shelf stands 70% proud of the unit */
@@ -585,6 +642,23 @@ const FLAP_W = (1.72 - bedW) / 2;   /* out to the full van width over the arches
 
 const hatchSlats = [];   /* the aft panel's centre slats lift out with the hatch */
 const stackSlats = [];   /* the folded panels' centre slats — only in the way when stowed */
+/* a panel with one soft corner: the outboard corner at the cab end, which is the
+   one you climb past to get onto the bed. Every other corner stays square. */
+function softPlate(name, w, d, thk, r, mat, parent) {
+  const hw = w / 2, hd = d / 2;
+  const s = new THREE.Shape();
+  s.moveTo(-hw, -hd);
+  s.lineTo(-hw, hd);
+  s.lineTo(hw - r, hd);
+  s.absarc(hw - r, hd - r, r, Math.PI / 2, 0, true);
+  s.lineTo(hw, -hd);
+  s.closePath();
+  const geo = new THREE.ExtrudeGeometry(s, { depth: thk, bevelEnabled: false, curveSegments: 8 });
+  geo.rotateX(-Math.PI / 2); geo.translate(0, -thk / 2, 0);
+  const m = new THREE.Mesh(geo, mat); m.name = name;
+  parent.add(m);
+  return m;
+}
 function panel(name, len, zCenter, y, parent, plain) {
   const g = new THREE.Group(); g.name = name;
   box(name + '_rail_left',  0.05, pT, len, -bedW / 2 + 0.025, y, zCenter, M.ply, g);
@@ -613,12 +687,25 @@ function panel(name, len, zCenter, y, parent, plain) {
     const side = sx < 0 ? 'left' : 'right';
     const pv = new THREE.Group(); pv.name = name + '_flap_hinge_' + side;
     pv.position.set(sx * bedW / 2, y, zCenter); g.add(pv);
-    box(name + '_flap_' + side, FLAP_W, pT, len - 0.03, sx * FLAP_W / 2, 0, 0, M.ply, pv);
+    const soft = name === 'bed_panel_front';   /* the pair nearest the cab */
+    if (soft) {
+      const fl = softPlate(name + '_flap_' + side, FLAP_W, len - 0.03, pT, 0.09, M.ply, pv);
+      fl.position.set(sx * FLAP_W / 2, 0, 0); fl.scale.x = sx;
+    } else {
+      box(name + '_flap_' + side, FLAP_W, pT, len - 0.03, sx * FLAP_W / 2, 0, 0, M.ply, pv);
+    }
     /* infill cushion out to the van wall — posed from setFold so it never
        sweeps through the mattress when the flap folds up */
-    const sc = new THREE.Mesh(
-      new THREE.BoxGeometry(FLAP_W - 0.008, cT, len - 0.04),
-      [M.cushion_edge, M.cushion_edge, M.cushion_face, M.cushion_face, M.cushion_edge, M.cushion_edge]);
+    let sc;
+    if (soft) {
+      sc = softPlate('tmp', FLAP_W - 0.008, len - 0.04, cT, 0.086,
+        [M.cushion_face, M.cushion_edge], new THREE.Group());
+      sc.scale.x = sx;
+    } else {
+      sc = new THREE.Mesh(
+        new THREE.BoxGeometry(FLAP_W - 0.008, cT, len - 0.04),
+        [M.cushion_edge, M.cushion_edge, M.cushion_face, M.cushion_face, M.cushion_edge, M.cushion_edge]);
+    }
     sc.name = name.replace('bed_panel', 'side_cushion') + '_' + side;
     sc.position.set(sx * (bedW / 2 + FLAP_W / 2), y + pT / 2 + cT / 2 + 0.002, zCenter);
     g.add(sc);
@@ -636,7 +723,12 @@ panel('bed_panel_rear', pL, pL / 2, 0, rearPivot);
 
 const pivotA = new THREE.Group(); pivotA.name = 'bed_hinge_a';
 pivotA.position.set(0, bedY, hingeA); bed.add(pivotA);
-tube('hinge_rear_mid', 0.011, bedW - 0.06, 0, 0, 0, M.steel, pivotA);
+/* cut at the hatch lines, like the rear rail and the middle slats, so the
+   bedside post can drop through the joint */
+for (const [side, sx] of [['left', -1], ['right', 1]]) {
+  const seg = (bedW - 0.06 - bayW) / 2;
+  tube('hinge_rear_mid_' + side, 0.011, seg, sx * (bayW + seg) / 2, 0, 0, M.steel, pivotA);
+}
 panel('bed_panel_mid', pL, -pL / 2, 0, pivotA);
 
 const pivotB = new THREE.Group(); pivotB.name = 'bed_hinge_b';
@@ -1116,7 +1208,8 @@ function projectedSpan(cam, rect, wrapRect) {
 /* --- numbered pins on each drawer front --- */
 const pinHost = document.getElementById('pins');
 const pinPt = new THREE.Vector3();
-if (pinHost) for (const d of drawerRefs) {
+const pinRefs = drawerRefs.concat([doorPinRef]);
+if (pinHost) for (const d of pinRefs) {
   const el = document.createElement('span');
   el.className = 'pin';
   el.textContent = String(d.n);
@@ -1137,11 +1230,16 @@ function placePins() {
   const r = frameRects.r, wr = frameRects.w;
   const SEP = 34;
   const pts = [];
-  for (const d of drawerRefs) {
+  for (const d of pinRefs) {
     if (!d.el) continue;
     d.g.updateWorldMatrix(true, false);
-    const px0 = d.key.endsWith('_upper') ? -(dW / 2 - 0.05) : (dW / 2 - 0.05);
-    pinPt.set(px0, BAYS[d.key][1] * 0.55, dD / 2 + 0.05).applyMatrix4(d.g.matrixWorld).project(cam);
+    if (d.local) {
+      pinPt.set(d.local[0], d.local[1], d.local[2]);
+    } else {
+      const px0 = d.key.endsWith('_upper') ? -(dW / 2 - 0.05) : (dW / 2 - 0.05);
+      pinPt.set(px0, BAYS[d.key][1] * 0.55, dD / 2 + 0.05);
+    }
+    pinPt.applyMatrix4(d.g.matrixWorld).project(cam);
     pts.push({
       d,
       x: (pinPt.x * 0.5 + 0.5) * r.width + (r.left - wr.left),
@@ -1383,7 +1481,7 @@ function syncDrawerBtn() {
   }
 }
 function setDrawers(t) { for (const d of drawerRefs) anim['d' + d.n].target = t; anim.d5.target = t; }
-function anyDrawerOpen() { return drawerRefs.some(d => anim['d' + d.n].target === 1); }
+function anyDrawerOpen() { return pinRefs.some(d => anim['d' + d.n].target === 1); }
 
 let seqTimers = [];
 let bubblesPinned = false;
@@ -1394,23 +1492,26 @@ function holdStill() {
   stage.removeAttribute('autorotate');
   if (stage._controls) stage._controls.autoRotate = false;
 }
-/* each drawer out and back in turn, two seconds apart, then all four together */
+/* each drawer out and back in turn, then the middle-bay door, then all together */
 function runDrawerSequence() {
   stopSequence();
-  const OPEN_MS = 900, HOLD = 350, STEP = OPEN_MS * 2 + HOLD + 500;
-  drawerRefs.forEach((d, i) => {
+  const HOLD = 350, GAP = 500;
+  let t = 0;
+  for (const d of pinRefs) {
     const a = anim['d' + d.n];
-    seqTimers.push(setTimeout(() => { a.target = 1; }, i * STEP));
-    seqTimers.push(setTimeout(() => { a.target = 0; }, i * STEP + OPEN_MS + HOLD));
-  });
-  const finale = drawerRefs.length * STEP;
+    const at = t;
+    seqTimers.push(setTimeout(() => { a.target = 1; }, at));
+    seqTimers.push(setTimeout(() => { a.target = 0; }, at + a.ms + HOLD));
+    t = at + a.ms * 2 + HOLD + GAP;
+  }
+  const finale = t;
   seqTimers.push(setTimeout(() => setDrawers(1), finale));
   /* shut them again but leave the reference photos on screen */
   seqTimers.push(setTimeout(() => {
     setDrawers(0);
     bubblesPinned = true;
     if (drawerBtn) drawerBtn.textContent = 'Hide drawer info';
-  }, finale + OPEN_MS + 1600));
+  }, finale + anim.d5.ms + 1600));
 }
 
 if (drawerBtn) drawerBtn.addEventListener('click', () => {
@@ -1609,3 +1710,50 @@ if (vanBtn) vanBtn.addEventListener('click', () => {
   vanSolid.visible = !vanSolid.visible;
   applyView();
 });
+
+/* ---- hovering a drawer front in the 3D view runs it out for three seconds ---- */
+const hoverRay = new THREE.Raycaster(), hoverPt = new THREE.Vector2();
+const frontMeshes = drawerRefs.map(d => {
+  const m = d.hinge.getObjectByName(d.key + '_front');
+  if (m) m.userData.drawerN = d.n;
+  return m;
+}).filter(Boolean);
+let hoverN = 0, hoverTimer = null;
+function closePeek() {
+  clearTimeout(hoverTimer); hoverTimer = null;
+  if (!hoverN) return;
+  anim['d' + hoverN].target = 0;
+  hoverN = 0;
+  if (!anyDrawerOpen() && drawerBtn) drawerBtn.textContent = 'Open drawers';
+}
+function peekDrawer(n) {
+  if (n === hoverN) return;
+  closePeek();   /* moving off a front, or onto another one, shuts the last */
+  hoverN = n;
+  if (!n) return;
+  stopDemo();
+  stopSequence();
+  bubblesPinned = false;
+  const a = anim['d' + n];
+  a.target = 1;
+  if (drawerBtn) drawerBtn.textContent = 'Close drawers';
+  hoverTimer = setTimeout(closePeek, 3000);   /* and it shuts itself after three seconds */
+}
+function onStageMove(e) {
+  const r = stage._renderer, cam = stage._camera;
+  if (!r || !cam) return;
+  const b = r.domElement.getBoundingClientRect();
+  hoverPt.set(((e.clientX - b.left) / b.width) * 2 - 1, -((e.clientY - b.top) / b.height) * 2 + 1);
+  hoverRay.setFromCamera(hoverPt, cam);
+  const hit = hoverRay.intersectObjects(frontMeshes, false)[0];
+  const n = hit ? hit.object.userData.drawerN : 0;
+  r.domElement.style.cursor = n ? 'pointer' : '';
+  peekDrawer(n);
+}
+function bindStageHover() {
+  const r = stage._renderer;
+  if (!r) { setTimeout(bindStageHover, 200); return; }
+  r.domElement.addEventListener('pointermove', onStageMove);
+  r.domElement.addEventListener('pointerleave', () => { r.domElement.style.cursor = ''; closePeek(); });
+}
+bindStageHover();
