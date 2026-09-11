@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <title>myCampal — Ford Tourneo Custom</title>
-<link rel="stylesheet" href="_ds/organic-38fa8e91-4870-4476-9e42-06181d6c2941/styles.css">
+<link rel="stylesheet" href="styles.css?v1.7-1789109907829">
 <script type="importmap">
 {
   "imports": {
@@ -80,7 +80,7 @@
         <button id="front-seats-out-toggle" class="btn btn-secondary" type="button">Remove 2 seats</button>
       </span>
       <button id="van-toggle" class="btn btn-ghost" type="button">Hide van</button>
-      <a class="btn btn-primary" href="cut-plan.html">Cut plan</a>
+      <a class="btn btn-primary" href="cut-plan.html?v1.7-1789109907829">Cut plan</a>
     </div>
   </div>
   <div class="stage-wrap">
@@ -88,57 +88,59 @@
     <div id="pins"></div>
     <figure class="callout" data-drawer="1">
       <span class="badge">1</span>
-      <div class="bubble"><img src="uploads/pasted-1788446060900-0.png" alt="Photograph of a camping box kitchen drawer with a twin-burner stove and side table"></div>
+      <div class="bubble"><img src="assets/drawer-1-kitchen.png" alt="Photograph of a camping box kitchen drawer with a twin-burner stove and side table"></div>
       <div class="dot d1"></div>
       <div class="dot d2"></div>
     </figure>
     <figure class="callout" data-drawer="2">
       <span class="badge">2</span>
-      <div class="bubble"><img src="uploads/pasted-1788476671781-0.png" alt="Deep open storage crate with hand-hole cut-outs in the bottom-left drawer"></div>
+      <div class="bubble"><img src="assets/drawer-2-crate.png" alt="Deep open storage crate with hand-hole cut-outs in the bottom-left drawer"></div>
       <div class="dot d1"></div>
       <div class="dot d2"></div>
     </figure>
     <figure class="callout" data-drawer="3">
       <span class="badge">3</span>
-      <div class="bubble"><img src="uploads/pasted-1788475134979-0.png" alt="Pull-out tray with a collapsible washing-up bowl in the top-right drawer"></div>
+      <div class="bubble"><img src="assets/drawer-3-tray.png" alt="Pull-out tray with a collapsible washing-up bowl in the top-right drawer"></div>
       <div class="dot d1"></div>
       <div class="dot d2"></div>
     </figure>
     <figure class="callout" data-drawer="4">
       <span class="badge">4</span>
-      <div class="bubble"><img src="uploads/pasted-1788467399500-0.png" alt="Slide-out compressor fridge in the bottom-right drawer"></div>
+      <div class="bubble"><img src="assets/drawer-4-fridge.png" alt="Slide-out compressor fridge in the bottom-right drawer"></div>
       <div class="dot d1"></div>
       <div class="dot d2"></div>
     </figure>
     <figure class="callout" data-drawer="5">
       <span class="badge">5</span>
-      <div class="bubble"><img src="uploads/pasted-1788502782458-0.png" alt="Dark-faced ply panel with two chrome rails, slid out of the middle bay as a shelf"></div>
+      <div class="bubble"><img src="assets/mid-bay-shelf.png" alt="Dark-faced ply panel with two chrome rails, slid out of the middle bay as a shelf"></div>
       <div class="dot d1"></div>
       <div class="dot d2"></div>
     </figure>
   </div>
 </div>
-<script src="./image-slot.js"></script>
-<script src="./three-d-stage.js"></script>
-<script type="module" src="./camping-box-model.js?v=1.4.5"></script>
+<script src="./image-slot.js?v1.7-1789109907829"></script>
+<script src="./three-d-stage.js?v1.7-1789109907829"></script>
+<script type="module" src="./camping-box-model.js?v1.7-1789109907829"></script>
 <script>
+  /* delegated from the document so it works however the page is loaded */
   (function () {
-    const btn = document.getElementById('menu-toggle');
-    const legend = document.getElementById('legend');
-    if (!btn || !legend) return;
-    btn.addEventListener('click', () => {
-      const open = legend.classList.toggle('open');
-      btn.setAttribute('aria-expanded', String(open));
-      btn.textContent = open ? 'Hide controls' : 'Controls';
-    });
-    /* picking an action closes the sheet so the model is visible */
-    legend.addEventListener('click', e => {
-      if (!e.target.closest('.btn')) return;
-      if (!getComputedStyle(btn).display.startsWith('none')) {
-        legend.classList.remove('open');
-        btn.setAttribute('aria-expanded', 'false');
-        btn.textContent = 'Controls';
+    function shut(btn, legend) {
+      legend.classList.remove('open');
+      btn.setAttribute('aria-expanded', 'false');
+      btn.textContent = 'Controls';
+    }
+    document.addEventListener('click', e => {
+      const legend = document.getElementById('legend');
+      const btn = document.getElementById('menu-toggle');
+      if (!btn || !legend) return;
+      if (e.target.closest('#menu-toggle')) {
+        const open = legend.classList.toggle('open');
+        btn.setAttribute('aria-expanded', String(open));
+        btn.textContent = open ? 'Hide controls' : 'Controls';
+        return;
       }
+      /* picking an action closes the sheet so the model is visible */
+      if (e.target.closest('#legend .btn') && getComputedStyle(btn).display !== 'none') shut(btn, legend);
     });
   })();
 </script>
