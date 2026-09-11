@@ -3,9 +3,9 @@
 <head>
 <meta charset="utf-8">
 <title>Cut plan — myCampal Ford Tourneo Custom</title>
-<link rel="stylesheet" href="_ds/organic-38fa8e91-4870-4476-9e42-06181d6c2941/styles.css">
+<link rel="stylesheet" href="styles.css?v1.8-1789114461081">
 <style>
-  body{margin:0;background:var(--color-bg);color:var(--color-text)}
+  body{margin:0;background:var(--color-bg, #f5ead8);color:var(--color-text, #201e1d)}
   .page{max-width:1180px;margin:0 auto;padding:var(--space-6) var(--space-5) var(--space-8);display:flex;flex-direction:column;gap:var(--space-6)}
   .head{display:flex;flex-wrap:wrap;align-items:center;gap:var(--space-3) var(--space-4)}
   h1{font-family:var(--font-heading);font-size:34px;line-height:1.1;margin:0}
@@ -208,17 +208,17 @@ function sheetSvg(sheet, tone) {
     const anchor = vertical ? ' text-anchor="start"' : '';
     return `<g>
       <rect x="${p.x}" y="${p.y}" width="${p.w}" height="${p.h}" rx="10"
-            fill="var(--color-${tone}-200)" stroke="var(--color-${tone}-700)" stroke-width="3"></rect>
+            fill="var(--color-${tone}-200, #e7e2d8)" stroke="var(--color-${tone}-700, #6c6154)" stroke-width="3"></rect>
       <text x="${tx}" y="${ty}"${rot}${anchor} font-family="var(--font-heading)"
-            font-size="${refSize}" fill="var(--color-${tone}-900)">${label}</text>
+            font-size="${refSize}" fill="var(--color-${tone}-900, #201e1d)">${label}</text>
       ${showDims ? `<text x="${tx + (vertical ? 0 : 0)}" y="${vertical ? ty + 32 : p.y + 86}"${rot ? ` transform="rotate(-90 ${tx} ${ty})"` : ''}${anchor}
-            font-family="var(--font-body)" font-size="28" fill="var(--color-${tone}-900)">${dims}</text>` : ''}
+            font-family="var(--font-body)" font-size="28" fill="var(--color-${tone}-900, #201e1d)">${dims}</text>` : ''}
     </g>`;
   }).join('');
   return {
     svg: `<svg viewBox="-6 -6 ${SHEET_L + 12} ${SHEET_W + 12}" role="img">
       <rect x="0" y="0" width="${SHEET_L}" height="${SHEET_W}" rx="14"
-            fill="var(--color-bg)" stroke="var(--color-neutral-400)" stroke-width="4"></rect>
+            fill="var(--color-bg, #f5ead8)" stroke="var(--color-neutral-400, #b3ab9d)" stroke-width="4"></rect>
       ${cells}
     </svg>`,
     yield: used / (SHEET_L * SHEET_W),

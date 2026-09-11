@@ -1281,11 +1281,63 @@ function readRects() {
   frameRects = { r: cv.getBoundingClientRect(), w: wrap.getBoundingClientRect() };
 }
 const boxBtnEl = document.getElementById('box-toggle');
+const bedFloat = document.getElementById('bed-float');
+const drawersFloat = document.getElementById('drawers-float');
+/* project a point on an object into stage coordinates */
+function toScreen(obj, lx, ly, lz, cam, r, wr) {
+  obj.updateWorldMatrix(true, false);
+  pinPt.set(lx, ly, lz).applyMatrix4(obj.matrixWorld).project(cam);
+  return {
+    x: (pinPt.x * 0.5 + 0.5) * r.width + (r.left - wr.left),
+    y: (-pinPt.y * 0.5 + 0.5) * r.height + (r.top - wr.top),
+    front: pinPt.z < 1,
+  };
+}
+function placeFloat(el, obj, lx, ly, lz, show, cam, r, wr) {
+  if (!el) return;
+  if (!show) { el.style.opacity = '0'; el.style.pointerEvents = 'none'; return; }
+  const p = toScreen(obj, lx, ly, lz, cam, r, wr);
+  el.style.transform = 'translate(' + Math.round(p.x) + 'px,' + Math.round(p.y) + 'px) translate(-50%,-50%)';
+  el.style.opacity = p.front ? '1' : '0';
+  el.style.pointerEvents = p.front ? '' : 'none';
+}
 function placePins() {
   if (!pinHost || !frameRects) return;
   const cam = stage._camera;
   if (!cam) return;
   const r = frameRects.r, wr = frameRects.w;
+  /* one bed control, on the bed's rear panel: unfold · lounger · fold */
+  const boxIn = anim.fit.p > 0.998 && anim.fit.target === 1;
+  const bedSettled = anim.bed.p === anim.bed.target && anim.recline.p === anim.recline.target;
+  if (bedFloat) {
+    const label = anim.bed.target === 1 ? 'Unfold bed'
+      : anim.recline.target === 1 ? 'Fold bed' : 'Lounger';
+    if (bedFloat.textContent !== label) bedFloat.textContent = label;
+    placeFloat(bedFloat, rearPivot, 0, 0.30, -pL * 0.85, boxIn && bedSettled, cam, r, wr);
+  }
+  if (drawersFloat) {
+    const shut = !anyDrawerOpen() && !seqRunning;
+    placeFloat(drawersFloat, doorBoard, 0, -0.10, T / 2 + 0.10, boxIn && shut, cam, r, wr);
+    /* and if the camera still brings them together, push the lower one clear */
+    if (bedFloat && bedFloat.style.opacity === '1' && drawersFloat.style.opacity === '1') {
+      const a = bedFloat.getBoundingClientRect(), b = drawersFloat.getBoundingClientRect();
+      const ovY = Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top);
+      const ovX = Math.min(a.right, b.right) - Math.max(a.left, b.left);
+      if (ovX > 0 && ovY > 0) {
+        const cur = drawersFloat.style.transform;
+        drawersFloat.style.transform = cur.replace('translate(-50%,-50%)',
+          'translate(-50%,-50%) translateY(' + Math.round(ovY + 10) + 'px)');
+      }
+    }
+  }
+  /* whichever control is out on the model leaves the menu, and vice versa */
+  const bedFloatOn = bedFloat && bedFloat.style.opacity === '1';
+  if (bedBtn) bedBtn.dataset.floating = (bedFloatOn && bedFloat.textContent !== 'Lounger') ? '1' : '';
+  if (loungeBtn) loungeBtn.dataset.floating = (bedFloatOn && bedFloat.textContent === 'Lounger') ? '1' : '';
+  if (drawerBtn) drawerBtn.dataset.floating = (drawersFloat && drawersFloat.style.opacity === '1') ? '1' : '';
+  for (const b of [bedBtn, loungeBtn, drawerBtn]) {
+    if (b && !b.dataset.boxHidden) b.style.display = b.dataset.floating ? 'none' : '';
+  }
   /* the fit/remove button rides with the tailgate opening */
   if (boxBtnEl) {
     tailgate.updateWorldMatrix(true, false);
@@ -1557,16 +1609,18 @@ function anyDrawerOpen() { return pinRefs.some(d => anim['d' + d.n].target === 1
 
 let seqTimers = [];
 let bubblesPinned = false;
-function stopSequence() { for (const t of seqTimers) clearTimeout(t); seqTimers = []; }
+let seqRunning = false;   /* true only while the drawer run itself is playing */
+function stopSequence() { for (const t of seqTimers) clearTimeout(t); seqTimers = []; seqRunning = false; }
 function holdStill() {
   userOrbiting = false;
   fromTheta = null;
   stage.removeAttribute('autorotate');
   if (stage._controls) stage._controls.autoRotate = false;
 }
-/* each drawer out and back in turn, then the middle-bay door, then all together */
+/* each drawer, then the middle-bay door, out and back in once in turn */
 function runDrawerSequence() {
   stopSequence();
+  seqRunning = true;
   const HOLD = 350, GAP = 500;
   let t = 0;
   for (const d of pinRefs) {
@@ -1576,14 +1630,12 @@ function runDrawerSequence() {
     seqTimers.push(setTimeout(() => { a.target = 0; }, at + a.ms + HOLD));
     t = at + a.ms * 2 + HOLD + GAP;
   }
-  const finale = t;
-  seqTimers.push(setTimeout(() => setDrawers(1), finale));
-  /* shut them again but leave the reference photos on screen */
+  /* each one opens and shuts once — hovering a front still peeks it afterwards */
   seqTimers.push(setTimeout(() => {
     setDrawers(0);
-    bubblesPinned = true;
-    if (drawerBtn) drawerBtn.textContent = 'Hide drawer info';
-  }, finale + anim.d5.ms + 1600));
+    seqRunning = false;   /* the run is over — the on-model button can come back */
+    if (drawerBtn) drawerBtn.textContent = 'Open drawers';
+  }, t));
 }
 
 if (drawerBtn) drawerBtn.addEventListener('click', () => {
@@ -1641,7 +1693,7 @@ function runDemo() {
 
 if (doorsBtn) doorsBtn.addEventListener('click', () => {
   anim.doors.target = anim.doors.target ? 0 : 1;
-  if (anim.doors.target === 1) runDemo();
+  /* opening up is just opening up — it doesn't unfold the bed or recline the seats */
   if (anim.doors.target === 0) {
     stopDemo();
     stopSequence();
@@ -1678,6 +1730,11 @@ if (bedBtn) bedBtn.addEventListener('click', () => {
   else anim.seats.target = 0;   /* bed stowed — bring the seat backs up */
   labels();
 });
+if (bedFloat) bedFloat.addEventListener('click', () => {
+  const target = bedFloat.textContent === 'Lounger' ? loungeBtn : bedBtn;
+  if (target) target.click();
+});
+if (drawersFloat) drawersFloat.addEventListener('click', () => { if (drawerBtn) drawerBtn.click(); });
 labels();
 uiReady = true;
 
@@ -1811,7 +1868,9 @@ function applyView() {
   for (const id of ['drawer-toggle', 'bed-toggle', 'lounge-toggle',
                     'hatch-toggle', 'cushions-toggle']) {
     const b = document.getElementById(id);
-    if (b) b.style.display = boxOut ? 'none' : '';
+    if (!b) continue;
+    b.dataset.boxHidden = boxOut ? '1' : '';
+    b.style.display = boxOut ? 'none' : '';
   }
   /* Julia & Mike stay hidden until the "jm" easter egg is typed */
   if (peopleBtn) peopleBtn.style.display = (boxOut || !peopleRevealed) ? 'none' : '';

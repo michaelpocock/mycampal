@@ -50,7 +50,7 @@
   .callout .bubble:hover{transform:scale(1.85);box-shadow:var(--shadow-lg),0 0 0 1px var(--color-neutral-300)}
   .callout:has(.bubble:hover){z-index:4}
   .callout img{width:100%;height:100%;object-fit:cover;display:block;filter:saturate(.82) contrast(.96) brightness(1.03)}
-  #box-toggle{position:absolute;left:0;top:0;z-index:5;white-space:nowrap;transform:translate(-50%,-50%);box-shadow:var(--shadow-lg)}
+  #box-toggle,.stage-btn{position:absolute;left:0;top:0;z-index:5;white-space:nowrap;transform:translate(-50%,-50%);box-shadow:var(--shadow-lg)}
   #pins .pin{position:absolute;left:0;top:0;width:30px;height:30px;border-radius:50%;background:var(--color-accent);color:var(--color-bg);font-family:var(--font-heading);font-size:15px;display:flex;align-items:center;justify-content:center;box-shadow:var(--shadow-sm);opacity:0;transition:opacity .25s;pointer-events:none}
   .callout .badge{position:absolute;left:-6px;top:-6px;z-index:2;width:36px;height:36px;border-radius:50%;background:var(--color-accent);color:var(--color-bg);font-family:var(--font-heading);font-size:17px;display:flex;align-items:center;justify-content:center;border:3px solid var(--color-bg);box-shadow:var(--shadow-sm)}
   .callout .dot{position:absolute;border-radius:50%;background:var(--color-bg);box-shadow:var(--shadow-sm)}
@@ -91,6 +91,8 @@
     <three-d-stage name="tourneo-camping-box" autorotate></three-d-stage>
     <div id="pins"></div>
     <button id="box-toggle" class="btn btn-primary" type="button">Fit camping box</button>
+    <button id="bed-float" class="btn btn-primary stage-btn" type="button">Unfold bed</button>
+    <button id="drawers-float" class="btn btn-primary stage-btn" type="button">Open drawers</button>
     <figure class="callout" data-drawer="1">
       <span class="badge">1</span>
       <div class="bubble"><img src="assets/drawer-1-kitchen.png" alt="Photograph of a camping box kitchen drawer with a twin-burner stove and side table"></div>
