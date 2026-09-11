@@ -99,6 +99,43 @@ for (const [side, sx] of [['left', -1], ['right', 1]]) {
     S('ac_vent_slat_' + (i + 1), 0.016, 0.022, 0.32, vx - 0.002, 0.34 + i * 0.040, acZ, M.trim);
   }
 }
+/* ---- Julia and Mike, stood on the ground behind the tailgate, carrying the box in ---- */
+const GROUND = -0.55;   /* the load floor sits this far above the tarmac */
+const lifters = new THREE.Group(); lifters.name = 'box_lifters';
+lifters.visible = false; vanSolid.add(lifters);
+function lifter(tag, sx, kit) {
+  const g = new THREE.Group(); g.name = 'lifter_' + tag; lifters.add(g);
+  const hip = GROUND + 0.88, sh = GROUND + 1.40;
+  for (const lx of [-0.085, 0.085]) {
+    box('lifter_' + tag + '_leg' + (lx < 0 ? '_l' : '_r'), 0.13, hip - GROUND, 0.17, lx, GROUND + (hip - GROUND) / 2, 0, kit.legs, g);
+  }
+  box('lifter_' + tag + '_torso', 0.34, sh - hip, 0.20, 0, (hip + sh) / 2, 0, kit.top, g);
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.105, 20, 14), kit.skin);
+  head.name = 'lifter_' + tag + '_head'; head.position.set(0, sh + 0.13, 0); g.add(head);
+  if (kit.hair) {
+    const h = new THREE.Mesh(new THREE.SphereGeometry(0.112, 20, 14, 0, Math.PI * 2, 0, 1.5), M.hair || kit.legs);
+    h.name = 'lifter_' + tag + '_hair'; h.position.set(0, sh + 0.135, 0); g.add(h);
+  }
+  /* arms reach forward and down to the box's rear edge; the whole arm group
+     travels with the box as it is lifted and set down */
+  const armsG = new THREE.Group(); armsG.name = 'lifter_' + tag + '_arms'; g.add(armsG);
+  /* both arms reach out forward and down to the box, shoulder to grip */
+  const reachY = sh - (GROUND + 0.78), reachZ = 0.34;
+  const armL = Math.hypot(reachY, reachZ), armA = Math.atan2(reachZ, reachY);
+  for (const [side, ax] of [['in', -0.18], ['out', 0.18]]) {
+    const arm = new THREE.Group();
+    arm.name = 'lifter_' + tag + '_arm_' + side;
+    arm.position.set(ax, sh, -0.02);
+    arm.rotation.x = armA;
+    armsG.add(arm);
+    box('lifter_' + tag + '_arm_' + side + '_limb', 0.095, armL, 0.10, 0, -armL / 2, 0, kit.top, arm);
+    box('lifter_' + tag + '_hand_' + side, 0.105, 0.10, 0.10, 0, -armL - 0.04, 0, kit.skin, arm);
+  }
+  return { g, armsG };
+}
+const mikeL = lifter('mike', -1, { top: M.tee, legs: M.shorts, skin: M.skin });
+const juliaR = lifter('julia', 1, { top: M.sweat, legs: M.jeans, skin: M.skin, hair: true });
+const lifterL = mikeL.g, lifterR = juliaR.g;
 S('bulkhead_panel', VW, VH, 0.03, 0, VH / 2, CAB + 0.015, M.trim);
 S('rear_sill_step', 1.60, 0.05, 0.18, 0, -0.025, TAIL + 0.09, M.trim_dk);
 S('rear_sill_trim', 1.60, 0.02, 0.05, 0, 0.005, TAIL + 0.02, M.trim);
@@ -1147,6 +1184,7 @@ function setSeatBacks(f) {
   for (const p of seatPivots) p.rotation.x = a;
 }
 
+let fitReady = false;
 const anim = {
   d1: { p: 0, target: 0, ms: 900, apply: p => { setOut(drawerRefs[0], ease(p) * OPEN); dollyWithDrawer(p); } },
   d2: { p: 0, target: 0, ms: 900, apply: p => setOut(drawerRefs[1], ease(p) * OPEN) },
@@ -1159,6 +1197,7 @@ const anim = {
   flaps:  { p: 1, target: 1, ms: 900, apply: p => setFlaps(ease(p)) },
   seats:  { p: 0, target: 0, ms: 1400, apply: p => setSeatBacks(ease(p)) },
   recline: { p: 0, target: 0, ms: 1200, apply: p => setRecline(ease(p)) },
+  fit: { p: 1, target: 1, ms: 3200, apply: p => { if (fitReady) setFit(p); } },
   doors:  { p: 1, target: 1, ms: 1600, apply: p => {
     const e = ease(p);
     for (const d of doorGroups) d.position.z = e * DL;
@@ -1455,6 +1494,7 @@ if (cushionsBtn) cushionsBtn.addEventListener('click', () => {
 });
 
 const peopleBtn = document.getElementById('people-toggle');
+let peopleRevealed = false;
 if (peopleBtn) peopleBtn.style.display = 'none';   /* revealed by typing "jm" */
 let jmKeys = '';
 window.addEventListener('keydown', e => {
@@ -1462,7 +1502,7 @@ window.addEventListener('keydown', e => {
   const tag = (e.target && e.target.tagName || '').toLowerCase();
   if (tag === 'input' || tag === 'select' || tag === 'textarea') return;
   jmKeys = (jmKeys + (e.key || '').toLowerCase()).slice(-2);
-  if (jmKeys === 'jm' && peopleBtn) { peopleBtn.style.display = ''; peopleBtn.focus(); }
+  if (jmKeys === 'jm' && peopleBtn) { peopleRevealed = true; peopleBtn.style.display = ''; peopleBtn.focus(); }
 });
 if (peopleBtn) peopleBtn.addEventListener('click', () => {
   peopleShown = !peopleShown;
@@ -1688,9 +1728,58 @@ if (tableBtn) tableBtn.addEventListener('click', () => {
 });
 
 const vanBtn = document.getElementById('van-toggle');
+const boxBtn = document.getElementById('box-toggle');
+/* everything that is the camping box rather than the van */
+const boxGroups = model.children.filter(c => c !== vanSolid);
+const boxBase = boxGroups.map(g => g.position.clone());
+let boxOut = false;
+
+/* p = 0 the box is on the ground behind the van · 1 fitted in place.
+   0–0.55 Julia and Mike carry it to the sill · 0.55–0.8 it slides in ·
+   0.8–1 they set it down on the load floor. */
+const CARRY_Y = 0.22, CARRY_Z = 1.30;
+function setFit(p) {
+  const sm = t => t * t * (3 - 2 * t);
+  const a = clamp01(p / 0.55), b = clamp01((p - 0.55) / 0.25), c = clamp01((p - 0.8) / 0.2);
+  const z = a < 1 ? 0.30 + (CARRY_Z - 0.30) * (1 - sm(a)) : 0.30 * (1 - sm(b));
+  const y = CARRY_Y * (1 - sm(c));
+  for (let i = 0; i < boxGroups.length; i++) {
+    const g = boxGroups[i], base = boxBase[i];
+    /* the table isn't part of the box — it stays put, and applyView owns it */
+    if (g === tableUnit) continue;
+    g.position.set(base.x, base.y + y, base.z + z);
+    g.visible = p > 0.002;
+  }
+  /* they stay with the box for the whole move, including the set-down */
+  lifters.visible = p > 0.002 && p < 0.999;
+  /* carrying it at the sides out on the tarmac, then in behind the tailgate,
+     shoulder to shoulder, pushing it through the rear opening */
+  const lx = (W / 2 + 0.26) + (0.44 - (W / 2 + 0.26)) * sm(a);
+  const lz = BOXZ + D / 2 + z + 0.30;   /* hands overlap the box's rear edge */
+  lifterL.position.set(-lx, 0, lz);
+  lifterR.position.set(lx, 0, lz);
+  /* arms follow the box down as it is lowered onto the load floor */
+  const drop = y - CARRY_Y;
+  mikeL.armsG.position.y = drop;
+  juliaR.armsG.position.y = drop;
+}
 function applyView() {
   if (vanBtn) vanBtn.textContent = vanSolid.visible ? 'Hide van' : 'Show van';
+  if (boxBtn) boxBtn.textContent = boxOut ? 'Fit camping box' : 'Remove camping box';
+  /* with the box out there is nothing to show the van against — keep the van */
+  if (boxOut && !vanSolid.visible) vanSolid.visible = true;
+  if (pinHost) pinHost.style.display = boxOut ? 'none' : '';
+  /* box-only controls have nothing to act on once the box is out */
+  for (const id of ['drawer-toggle', 'bed-toggle', 'lounge-toggle',
+                    'hatch-toggle', 'cushions-toggle']) {
+    const b = document.getElementById(id);
+    if (b) b.style.display = boxOut ? 'none' : '';
+  }
+  /* Julia & Mike stay hidden until the "jm" easter egg is typed */
+  if (peopleBtn) peopleBtn.style.display = (boxOut || !peopleRevealed) ? 'none' : '';
+  if (vanBtn) vanBtn.style.display = boxOut ? 'none' : '';
   /* the set-up table belongs to the layout, not the van — keep it when the van goes */
+  /* the table stays in the van when the box comes out — it stands on its own board */
   tableUnit.visible = vanSolid.visible || !tableStowed || anim.recline.target === 1;
   /* van-only controls have nothing to act on once the van is hidden */
   for (const id of ['doors-toggle', 'seats-out-toggle', 'front-seats-out-toggle']) {
@@ -1702,10 +1791,42 @@ function applyView() {
   const frontOut = !seatGroups.row1_2.visible && !fourOut;
   if (seatsOutBtn && vanSolid.visible && frontOut) seatsOutBtn.style.display = 'none';
   if (frontSeatsBtn && vanSolid.visible && fourOut) frontSeatsBtn.style.display = 'none';
+  /* a group whose every button is hidden shouldn't leave an empty pill behind */
+  for (const g of document.querySelectorAll('#legend .group')) {
+    const any = [...g.children].some(c => getComputedStyle(c).display !== 'none');
+    g.style.display = any ? '' : 'none';
+  }
   updateVisBox();
   reframe();
 }
 applyView();
+fitReady = true;
+setFit(1);
+if (boxBtn) boxBtn.addEventListener('click', () => {
+  boxOut = !boxOut;
+  stopDemo(); stopSequence();
+  let wait = 0;
+  if (boxOut) {
+    setDrawers(0);
+    bubblesPinned = false;
+    /* the box can't come out with the bed made up — fold it away first */
+    if (anim.bed.target !== 1) {
+      anim.bed.target = 1;
+      anim.flaps.target = 1;
+      anim.recline.target = 0;
+      wait = Math.max(wait, anim.bed.ms * (1 - anim.bed.p));
+    }
+  }
+  /* nothing goes in or out through a shut tailgate — open up first */
+  if (anim.doors.target !== 1) {
+    anim.doors.target = 1;
+    wait = Math.max(wait, anim.doors.ms * (1 - anim.doors.p));
+  }
+  labels();
+  applyView();
+  if (wait > 0) seqTimers.push(setTimeout(() => { anim.fit.target = boxOut ? 0 : 1; }, wait));
+  else anim.fit.target = boxOut ? 0 : 1;
+});
 if (vanBtn) vanBtn.addEventListener('click', () => {
   vanSolid.visible = !vanSolid.visible;
   applyView();
