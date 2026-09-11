@@ -24,7 +24,7 @@
 <style>
   three-d-stage:not(:defined){visibility:hidden}
   body{margin:0;background:var(--color-bg);min-height:100vh}
-  .wrap{display:flex;flex-direction:column;min-height:100dvh;overflow:visible;padding:var(--space-4) var(--space-6);box-sizing:border-box;gap:var(--space-4)}
+  .wrap{display:flex;flex-direction:column;height:100dvh;overflow:hidden;padding:var(--space-4) var(--space-6);box-sizing:border-box;gap:var(--space-4)}
   .head{flex:0 0 auto;display:flex;flex-wrap:wrap;align-items:center;gap:var(--space-2) var(--space-4);overflow:visible}
   h1{font-family:var(--font-heading);font-size:20px;margin:0;line-height:1.2;flex:0 0 auto;white-space:nowrap}
   .legend{flex:0 1 auto;display:flex;flex-wrap:wrap;align-items:center;gap:var(--space-3)}
@@ -34,15 +34,17 @@
   #menu-toggle{display:none;flex:0 0 auto}
   @media (max-width:760px){
     .wrap{padding:var(--space-3) var(--space-4);gap:var(--space-3)}
+    .head{flex-wrap:nowrap;gap:var(--space-2);position:relative}
     h1{font-size:16px;white-space:normal}
-    #menu-toggle{display:inline-flex}
-    .legend{display:none;flex-basis:100%;flex-direction:column;align-items:stretch;gap:var(--space-2)}
+    #menu-toggle{display:inline-flex;margin-left:auto}
+    /* the open sheet floats over the model, so the canvas keeps full height */
+    .legend{display:none;position:absolute;z-index:6;top:calc(100% + var(--space-2));left:0;right:0;max-height:72dvh;overflow-y:auto;flex-direction:column;align-items:stretch;gap:var(--space-2);padding:var(--space-3);box-sizing:border-box;border-radius:var(--radius-lg);background:var(--color-bg);box-shadow:var(--shadow-lg)}
     .legend.open{display:flex}
     .legend .group{flex-direction:column;align-items:stretch;border-radius:var(--radius-md);padding:var(--space-2)}
     .legend .btn,.legend a.btn{width:100%;justify-content:center;min-height:44px;font-size:15px;white-space:normal}
-    .stage-wrap{min-height:min(56dvh,420px)}
+    .stage-wrap{min-height:0}
   }
-  .stage-wrap{position:relative;flex:1 1 auto;min-height:min(70dvh,560px);display:flex;overflow:hidden}
+  .stage-wrap{position:relative;flex:1 1 0;min-height:0;display:flex;overflow:hidden}
   .callout{position:absolute;left:0;top:0;width:140px;margin:0;pointer-events:none;opacity:0;visibility:hidden;transition:opacity .18s linear}
   .callout .bubble{width:140px;height:140px;pointer-events:none;border-radius:50%;overflow:hidden;border:5px solid var(--color-bg);box-shadow:var(--shadow-lg);background:var(--color-neutral-200);transform-origin:center;transition:transform .18s ease-out,box-shadow .18s ease-out}
   .callout .bubble:hover{transform:scale(1.85);box-shadow:var(--shadow-lg),0 0 0 1px var(--color-neutral-300)}
@@ -124,6 +126,7 @@
 <script>
   /* delegated from the document so it works however the page is loaded */
   (function () {
+    let replaying = false;
     function shut(btn, legend) {
       legend.classList.remove('open');
       btn.setAttribute('aria-expanded', 'false');
@@ -139,9 +142,19 @@
         btn.textContent = open ? 'Hide controls' : 'Controls';
         return;
       }
-      /* picking an action closes the sheet so the model is visible */
-      if (e.target.closest('#legend .btn') && getComputedStyle(btn).display !== 'none') shut(btn, legend);
-    });
+      const hit = e.target.closest('#legend .btn');
+      if (!hit || replaying || getComputedStyle(btn).display === 'none') return;
+      /* close the sheet first, then let the action run, so the model is already
+         in view when it starts moving */
+      e.preventDefault();
+      e.stopPropagation();
+      shut(btn, legend);
+      setTimeout(() => {
+        replaying = true;
+        hit.click();
+        replaying = false;
+      }, 220);
+    }, true);
   })();
 </script>
 </body>
