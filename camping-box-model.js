@@ -344,8 +344,8 @@ function poseTable() {
     lerp(BSS_Y, BEDSIDE_TOP_Y, b2) + 0.14 * Math.sin(Math.PI * b2),
     lerp(BSS_Z, BS_Z, b2));
   bsPost.rotation.z = Math.PI / 2 * (1 - b2);
-  bsPost.position.set(lerp(BSS_X + 0.30, BS_POST_X, b2),
-    lerp(BSS_Y, BS_BASE_Y + 0.012 + BS_LEN / 2, b2),
+  bsPost.position.set(lerp(BSS_X, BS_POST_X, b2),
+    lerp(BSS_Y - 0.20, BS_BASE_Y + 0.012 + BS_LEN / 2, b2),
     lerp(BSS_Z, BS_Z, b2));
   bsFoot.visible = b2 > 0.02;
   /* stowed on the box's aft face — not shown at all while the box is out of the van.
@@ -1104,7 +1104,7 @@ const AFT_END = D / 2;   /* pads run right out to the box's aft face */
    full length forward to meet the middle pad, so there is no gap fore to aft.
    The +0.03 restores what the pad geometry insets at each end. */
 const SIDE_LEN = AFT_END - (SPLIT_Z - POST_GAP / 2) + 0.03;
-const REAR_LEN = AFT_END - (SPLIT_Z + POST_GAP / 2) + 0.03;
+const REAR_LEN = SIDE_LEN;   /* the hatch pad runs the same length — the bored hole clears the post */
 const MID_LEN = (SPLIT_Z - POST_GAP / 2) - (hingeA - pL);
 const SIDE_Z = AFT_END - (SIDE_LEN - 0.03) / 2, REAR_Z = AFT_END - (REAR_LEN - 0.03) / 2;
 const MID_Z = SPLIT_Z - POST_GAP / 2 - MID_LEN / 2;
@@ -1679,6 +1679,7 @@ function placeCallouts() {
 updateVisBox();
 function tick(now) {
   const dt = now - last; last = now;
+  applyTableMode();   /* the pedestal rises only once the fold has finished */
   /* the side cushions wait two seconds after the bed starts unfolding */
   if (anim.bed.target !== bedPrevTarget) { bedPrevTarget = anim.bed.target; flapsAt = null; }
   if (anim.bed.target === 0) {
@@ -2015,16 +2016,23 @@ function refreshSeatButtons() {
 
 let tableStowed = true;   /* the van starts empty — the table travels stowed */
 function applyTableMode() {
+  /* the bed lands on the table — it can never be stowed while the bed is down */
+  if (anim.bed.target === 0) tableStowed = false;
   /* stowing wins in every mode — in the lounger it takes the bedside table away too */
   /* the pedestal stands at dining height with the bed folded, and drops to bed
      height when the bed comes down so the panels land on it */
-  tblH = anim.bed.target === 1 ? TBL_H_HI : TBL_H_BED;
+  /* raise only once the bed has finished folding; drop as soon as it starts coming down */
+  tblH = (anim.bed.target === 1 && anim.bed.p > 0.999) ? TBL_H_HI : TBL_H_BED;
   tableProps.position.y = tblH - TBL_H;   /* the cards and wine ride with the top */
   /* the bedside table is its own piece now — it comes out with the lounger
      whether or not the main table is standing */
   const bedside = anim.recline.target === 1;
+  /* the bed and the lounger both land on the table, so it must be whole — both
+     halves down, nothing lifted off or sent to the bedside pose */
+  const full = anim.bed.target === 0 || bedside;
   setTableStowed(tableStowed, bedside);
-  anim.bside.target = bedside ? 1 : 0;   /* half B travels to the bedside pose */
+  anim.bside.target = bedside ? 1 : 0;   /* the lounger table comes out with the lounger */
+  if (full) anim.leaf.target = 0;
   tableUnit.visible = boxRemoved() ? !tableStowed : (vanSolid.visible || !tableStowed);
   if (tableBtn) tableBtn.textContent = tableStowed ? 'Set up table' : 'Stow table';
 }
