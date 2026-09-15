@@ -304,11 +304,16 @@ const bsTable = new THREE.Group(); bsTable.name = 'bedside_table'; tableParts.ad
 roundPlate('bedside_top', 0.42, 0.34, 0.018, 0.06, M.ply, bsTable);
 box('bedside_top_plate', 0.14, 0.012, 0.14, 0, -0.015, 0, M.steel, bsTable);
 const bsPost = tube('bedside_post', 0.026, BS_LEN, 0, 0, 0, M.steel, tableParts, 'y');
-/* stowed: laid flat on the cab-end face, clear of the drawers and the folded bed's overhang */
-const BSS_X = 0 - TBLX, BSS_Y = 0.34, BSS_Z = (BOXZ - D / 2 - 0.075) - TBLZ;
+/* stowed: clipped flat to the cab-end face of the box, on the drawer-bay side,
+   portrait so it stays inside the bay width; the leg stands beside it, collapsed */
+const FORE_FACE = BOXZ - D / 2;
+const BSS_X = 0.410 - TBLX, BSS_Y = 0.290, BSS_Z = (FORE_FACE - 0.011) - TBLZ;
+const BSP_STOW_X = 0.214 - TBLX, BSP_STOW_Y = 0.285, BSP_STOW_Z = (FORE_FACE - 0.030) - TBLZ;
+const BSP_STOW_LEN = 0.450;
 
 let tblStow = false, tblBedside = false, remP = 0, bsP = 0;
 var bsHideStowed = true;   /* the van starts empty, so the stowed bedside table is hidden */
+var fitOffY = 0, fitOffZ = 0;   /* the box's own travel, so the stowed table rides with it */
 function poseTable() {
   tableBoard.visible = true;
   tFoot.visible = tFoot2.visible = true;   /* screwed to the board */
@@ -340,15 +345,19 @@ function poseTable() {
   /* --- the bedside table: its own top and post, off the box's aft face --- */
   const b2 = bsP;
   bsTable.rotation.x = -Math.PI / 2 * (1 - b2);
+  bsTable.rotation.y = Math.PI / 2 * (1 - b2);   /* portrait while clipped to the drawer front */
+  /* the stowed table is clipped to the box, so it travels in with it */
+  const ride = 1 - b2;
   bsTable.position.set(lerp(BSS_X, BS_POST_X, b2),
-    lerp(BSS_Y, BEDSIDE_TOP_Y, b2) + 0.14 * Math.sin(Math.PI * b2),
-    lerp(BSS_Z, BS_Z, b2));
-  bsPost.rotation.z = Math.PI / 2 * (1 - b2);
-  bsPost.position.set(lerp(BSS_X, BS_POST_X, b2),
-    lerp(BSS_Y - 0.20, BS_BASE_Y + 0.012 + BS_LEN / 2, b2),
-    lerp(BSS_Z, BS_Z, b2));
+    lerp(BSS_Y, BEDSIDE_TOP_Y, b2) + 0.14 * Math.sin(Math.PI * b2) + fitOffY * ride,
+    lerp(BSS_Z, BS_Z, b2) + fitOffZ * ride);
+  bsPost.rotation.z = 0;   /* the leg stows upright beside the top, collapsed */
+  bsPost.scale.y = lerp(BSP_STOW_LEN / BS_LEN, 1, b2);
+  bsPost.position.set(lerp(BSP_STOW_X, BS_POST_X, b2),
+    lerp(BSP_STOW_Y, BS_BASE_Y + 0.012 + BS_LEN / 2, b2) + fitOffY * ride,
+    lerp(BSP_STOW_Z, BS_Z, b2) + fitOffZ * ride);
   bsFoot.visible = b2 > 0.02;
-  /* stowed on the box's aft face — not shown at all while the box is out of the van.
+  /* stowed on the box's cab-end face — not shown at all while the box is out of the van.
      Read from a hoisted flag, so poseTable never reaches forward to a later binding. */
   const hideBs = b2 < 0.02 && bsHideStowed;
   bsTable.visible = !hideBs;
@@ -519,6 +528,28 @@ for (const [side, sx] of [['left', -1], ['right', 1]]) {
 }
 box('cleat_right', 0.05, 0.03, D - 0.10,  W / 2 - 0.06, 0.0155, 0, M.steel, carcass);
 
+/* ---- clips for the stowed lounger table, on the cab-end face ----
+   the top hangs portrait over the right bay and the leg stands beside it,
+   both kept clear of the open middle bay */
+{
+  const faceZ = -D / 2, panelOut = faceZ - 0.022;
+  for (const [lvl, cy] of [['upper', 0.455], ['lower', 0.125]]) {
+    for (const [edge, ex] of [['outer', 0.580], ['inner', 0.240]]) {
+      box('table_stow_clip_' + lvl + '_' + edge, 0.026, 0.030, 0.022,
+        ex, cy, faceZ - 0.011, M.steel, carcass);
+      box('table_stow_catch_' + lvl + '_' + edge, 0.034, 0.018, 0.008,
+        ex, cy, panelOut - 0.004, M.latch, carcass);
+    }
+  }
+  /* cradle clips for the collapsed leg, just inboard of the top */
+  for (const [lvl, cy] of [['upper', 0.455], ['lower', 0.125]]) {
+    box('table_stow_leg_clip_' + lvl, 0.022, 0.024, 0.058,
+      0.214, cy, faceZ - 0.029, M.steel, carcass);
+    box('table_stow_leg_catch_' + lvl, 0.060, 0.016, 0.008,
+      0.214, cy, faceZ - 0.062, M.latch, carcass);
+  }
+}
+
 /* ---- drawers ---- */
 const dW = bayW - 0.03, dD = D - 0.06;
 /* [baseY, height] per drawer — the right-hand bottom drawer is a deep 380 mm box */
@@ -574,8 +605,8 @@ function drawer(name, cx, out, kitchen) {
   }
   const fh = dh + 0.02;
   const frontPivot = new THREE.Group(); frontPivot.name = name + '_front_hinge';
-  frontPivot.position.set(0, fh, D / 2 + 0.012); g.add(frontPivot);   /* hinged along its top edge, proud of the carcass */
-  box(name + '_front', bayW + 0.012, fh, 0.022, 0, -fh / 2, 0, M.accent, frontPivot);
+  frontPivot.position.set(0, fh, D / 2 - 0.011); g.add(frontPivot);   /* hinged along its top edge; shut, the face sits flush with the carcass edge */
+  box(name + '_front', bayW - 0.012, fh, 0.022, 0, -fh / 2, 0, M.accent, frontPivot);
   /* two small blue latches near the bottom edge, as in the reference photo */
   for (const sx of [-1, 1]) {
     const side2 = sx < 0 ? 'left' : 'right';
@@ -748,6 +779,7 @@ const LIFT = pT + 0.005;   /* bare panels stack directly on each other */
 const OVL = pT + 0.004;   /* the overlay board laid on the cab-end panel */
 
 const flaps = [];
+const wingStays = [];   /* sliding hooked arms under the fold-out wings */
 const sideCushions = [];
 const FLAP_W = (VW - 0.04 - W) / 2;   /* unfolded, the wings take the bed out to the full van width */
 
@@ -867,6 +899,21 @@ function panel(name, len, zCenter, y, parent, plain) {
     sideCushions.push({ m: sc, sx, y: y + pT / 2 + cT / 2 + 0.002, z: zCenter, dir: name === 'bed_panel_front' ? -1 : 1 });
     tube(name + '_flap_pin_' + side, 0.008, len - 0.06, 0, 0, 0, M.steel, pv, 'z');
     flaps.push({ pv, sx, dir: name === 'bed_panel_front' ? -1 : 1 });   /* blue is inverted when stowed, so its wings fold the other way */
+    /* two leaf stays per wing: a channel rail screwed to the panel underside with
+       a sliding arm that runs out and hooks under the wing once it is down */
+    for (const [tag, zf] of [['a', -0.28], ['b', 0.28]]) {
+      const bz = zCenter + zf * (len - 0.03), sy = y - pT / 2 - 0.010;
+      box(name + '_wing_stay_rail_' + side + '_' + tag, 0.170, 0.018, 0.026,
+        sx * (bedW / 2 - 0.095), sy, bz, M.steel, g);
+      const slide = new THREE.Group(); slide.name = name + '_wing_stay_' + side + '_' + tag; g.add(slide);
+      box(name + '_wing_stay_arm_' + side + '_' + tag, 0.150, 0.008, 0.016,
+        sx * 0.075, 0, 0, M.steel, slide);
+      box(name + '_wing_stay_hook_' + side + '_' + tag, 0.012, 0.026, 0.016,
+        sx * 0.144, 0.009, 0, M.steel, slide);
+      const inX = sx * (bedW / 2 - 0.160), outX = sx * (bedW / 2 - 0.030);
+      slide.position.set(outX, sy, bz);
+      wingStays.push({ slide, inX, outX });
+    }
   }
   parent.add(g);
   return g;
@@ -1214,6 +1261,8 @@ function setFold(f) {
    Driven on its own track so it can lag the bed unfolding by two seconds. */
 function setFlaps(g) {
   for (const f of flaps) f.pv.rotation.z = f.sx * f.dir * Math.PI / 2 * g;
+  /* the arms run out with the wings and retract into their rails as they fold up */
+  for (const st of wingStays) st.slide.position.x = st.inX + (st.outX - st.inX) * (1 - g);
   for (const s of sideCushions) {
     const xDep = s.sx * (W / 2 + FLAP_W / 2);
     const xFold = s.sx * (W / 2 - cT / 2 - 0.014);   /* folds inboard onto the stack — outboard there is no room past the arches */
@@ -1680,6 +1729,11 @@ updateVisBox();
 function tick(now) {
   const dt = now - last; last = now;
   applyTableMode();   /* the pedestal rises only once the fold has finished */
+  /* let the page know the box is in, so the controls sheet can stay open */
+  {
+    const fitted = (anim.fit.target === 1 && anim.fit.p > 0.998) ? '1' : '0';
+    if (document.body.dataset.boxFitted !== fitted) document.body.dataset.boxFitted = fitted;
+  }
   /* the side cushions wait two seconds after the bed starts unfolding */
   if (anim.bed.target !== bedPrevTarget) { bedPrevTarget = anim.bed.target; flapsAt = null; }
   if (anim.bed.target === 0) {
@@ -2016,8 +2070,9 @@ function refreshSeatButtons() {
 
 let tableStowed = true;   /* the van starts empty — the table travels stowed */
 function applyTableMode() {
-  /* the bed lands on the table — it can never be stowed while the bed is down */
-  if (anim.bed.target === 0) tableStowed = false;
+  /* the bed lands on the table — it can never be stowed while the bed is down.
+     The lounger is the exception: only its own table goes away. */
+  if (anim.bed.target === 0 && anim.recline.target !== 1) tableStowed = false;
   /* stowing wins in every mode — in the lounger it takes the bedside table away too */
   /* the pedestal stands at dining height with the bed folded, and drops to bed
      height when the bed comes down so the panels land on it */
@@ -2025,16 +2080,21 @@ function applyTableMode() {
   tblH = (anim.bed.target === 1 && anim.bed.p > 0.999) ? TBL_H_HI : TBL_H_BED;
   tableProps.position.y = tblH - TBL_H;   /* the cards and wine ride with the top */
   /* the bedside table is its own piece now — it comes out with the lounger
-     whether or not the main table is standing */
-  const bedside = anim.recline.target === 1;
+     whether or not the main table is standing. In the lounger, stowing takes
+     only the lounger table away: the main table stays set up under the seat. */
+  const lounger = anim.recline.target === 1;
+  const mainStowed = tableStowed && !lounger;
+  const bedside = lounger && !tableStowed;
   /* the bed and the lounger both land on the table, so it must be whole — both
      halves down, nothing lifted off or sent to the bedside pose */
-  const full = anim.bed.target === 0 || bedside;
-  setTableStowed(tableStowed, bedside);
+  const full = anim.bed.target === 0 || lounger;
+  setTableStowed(mainStowed, bedside);
   anim.bside.target = bedside ? 1 : 0;   /* the lounger table comes out with the lounger */
   if (full) anim.leaf.target = 0;
-  tableUnit.visible = boxRemoved() ? !tableStowed : (vanSolid.visible || !tableStowed);
-  if (tableBtn) tableBtn.textContent = tableStowed ? 'Set up table' : 'Stow table';
+  tableUnit.visible = boxRemoved() ? !mainStowed : (vanSolid.visible || !mainStowed);
+  if (tableBtn) tableBtn.textContent = lounger
+    ? (tableStowed ? 'Set up lounger table' : 'Stow lounger table')
+    : (tableStowed ? 'Set up table' : 'Stow table');
 }
 const tableBtn = document.getElementById('table-toggle');
 applyTableMode();   /* start stowed */
@@ -2073,6 +2133,10 @@ function setFit(p) {
     g.position.set(base.x, base.y + y, base.z + z);
     g.visible = p > 0.002;
   }
+  /* the stowed lounger table is clipped to the box, so it rides in with it */
+  fitOffY = y; fitOffZ = z;
+  bsHideStowed = p <= 0.002;
+  poseTable();
   /* they stay with the box for the whole move, including the set-down */
   lifters.visible = false;   /* the box moves on its own — no carriers shown */
   /* carrying it at the sides out on the tarmac, then in behind the tailgate,
@@ -2098,7 +2162,7 @@ function applyView() {
   if (boxBtn) boxBtn.style.display = boxOut ? '' : 'none';
   if (boxRemoveBtn) boxRemoveBtn.style.display = boxOut ? 'none' : '';
   if (pinHost) pinHost.style.display = boxOut ? 'none' : '';
-  bsHideStowed = boxOut;
+  bsHideStowed = fitP <= 0.002;   /* it rides with the box: shown only once the box is */
   poseTable();   /* the stowed bedside table hides with the box out */
   /* box-only controls have nothing to act on once the box is out */
   for (const id of ['drawer-toggle', 'bed-toggle', 'lounge-toggle',
