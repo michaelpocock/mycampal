@@ -76,6 +76,7 @@
     }
     canvas { display: block; outline: none; }
     .toolbar {
+      display: none !important;
       position: absolute;
       right: 16px;
       bottom: 16px;
