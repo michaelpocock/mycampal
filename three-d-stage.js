@@ -162,6 +162,7 @@
       root.appendChild(note);
       this._toolbar = document.createElement('div');
       this._toolbar.className = 'toolbar';
+      this._toolbar.style.display = 'none';   /* exports are not offered in this build */
       this._objBtn = document.createElement('button');
       this._objBtn.type = 'button';
       this._objBtn.textContent = 'Download OBJ + MTL';
