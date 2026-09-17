@@ -91,18 +91,18 @@
 
 <style>
   /* key-features card, shown on open and from the Controls menu */
-  #features{position:fixed;inset:0;z-index:20;display:none;align-items:center;justify-content:center;padding:var(--space-5);box-sizing:border-box;background:color-mix(in srgb, var(--color-text) 44%, transparent)}
+  #features{position:fixed;inset:0;z-index:20;display:none;align-items:center;justify-content:center;padding:var(--space-4);box-sizing:border-box;background:color-mix(in srgb, var(--color-text) 44%, transparent)}
   #features.open{display:flex}
   #features .card{position:relative;width:min(780px,100%);max-height:86dvh;overflow-y:auto;box-sizing:border-box;padding:var(--space-6);border-radius:var(--radius-lg);background:var(--color-surface);box-shadow:0 24px 60px color-mix(in srgb, var(--color-text) 34%, transparent)}
   #features h2{font-family:var(--font-heading);font-size:24px;margin:0 0 4px}
-  #features .sub{margin:0 0 var(--space-5);color:color-mix(in srgb, var(--color-text) 65%, transparent);font-size:14px}
-  #features dl{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:var(--space-4) var(--space-5);margin:0}
+  #features .sub{margin:0 0 var(--space-4);color:color-mix(in srgb, var(--color-text) 65%, transparent);font-size:14px}
+  #features dl{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:var(--space-4) var(--space-4);margin:0}
   #features dt{font-family:var(--font-heading);font-size:15px;margin:0 0 2px}
   #features dd{margin:0;font-size:14px;line-height:1.45;color:color-mix(in srgb, var(--color-text) 78%, transparent);text-wrap:pretty}
   #features .foot{display:flex;justify-content:flex-end;margin-top:var(--space-6)}
   @media (max-width:760px){
     #features{padding:0;align-items:flex-end}
-    #features .card{padding:var(--space-5) var(--space-4) calc(var(--space-6) + env(safe-area-inset-bottom));border-radius:20px 20px 0 0;max-height:92dvh}
+    #features .card{padding:var(--space-4) var(--space-4) calc(var(--space-6) + env(safe-area-inset-bottom));border-radius:20px 20px 0 0;max-height:92dvh}
     #features .foot .btn{width:100%;min-height:52px}
   }
 </style>
@@ -113,7 +113,7 @@
   #features .chead{position:sticky;top:0;z-index:2;display:flex;align-items:flex-start;justify-content:space-between;gap:var(--space-4);padding:var(--space-6) 0 var(--space-3);background:var(--color-surface)}
   #features .chead h2{margin:0}
   #features .x{flex:0 0 auto;width:36px;height:36px;padding:0;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:19px;line-height:1}
-  #features .foot{position:sticky;bottom:0;margin-top:var(--space-5);padding:var(--space-4) 0 0;background:var(--color-surface)}
+  #features .foot{position:sticky;bottom:0;margin-top:var(--space-4);padding:var(--space-4) 0 0;background:var(--color-surface)}
 </style>
 
 <style>
