@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>myCampal — Ford Tourneo Custom</title>
-<link rel="stylesheet" href="assets/ds-styles.css?v2.1.0-1789598486210">
+<link rel="stylesheet" href="assets/ds-styles.css?v2.2.0-1789635063905">
 <script type="importmap">
 {
   "imports": {
@@ -88,6 +88,44 @@
   .btn-van:hover { background: var(--color-accent-2-200); }
   .btn-van:active { background: var(--color-accent-2-300); }
 </style>
+
+<style>
+  /* key-features card, shown on open and from the Controls menu */
+  #features{position:fixed;inset:0;z-index:20;display:none;align-items:center;justify-content:center;padding:var(--space-5);box-sizing:border-box;background:color-mix(in srgb, var(--color-text) 44%, transparent)}
+  #features.open{display:flex}
+  #features .card{position:relative;width:min(780px,100%);max-height:86dvh;overflow-y:auto;box-sizing:border-box;padding:var(--space-6);border-radius:var(--radius-lg);background:var(--color-surface);box-shadow:0 24px 60px color-mix(in srgb, var(--color-text) 34%, transparent)}
+  #features h2{font-family:var(--font-heading);font-size:24px;margin:0 0 4px}
+  #features .sub{margin:0 0 var(--space-5);color:color-mix(in srgb, var(--color-text) 65%, transparent);font-size:14px}
+  #features dl{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:var(--space-4) var(--space-5);margin:0}
+  #features dt{font-family:var(--font-heading);font-size:15px;margin:0 0 2px}
+  #features dd{margin:0;font-size:14px;line-height:1.45;color:color-mix(in srgb, var(--color-text) 78%, transparent);text-wrap:pretty}
+  #features .foot{display:flex;justify-content:flex-end;margin-top:var(--space-6)}
+  @media (max-width:760px){
+    #features{padding:0;align-items:flex-end}
+    #features .card{padding:var(--space-5) var(--space-4) calc(var(--space-6) + env(safe-area-inset-bottom));border-radius:20px 20px 0 0;max-height:92dvh}
+    #features .foot .btn{width:100%;min-height:52px}
+  }
+</style>
+
+<style>
+  /* the close affordance must stay put however far the list scrolls */
+  #features .card{padding-top:0}
+  #features .chead{position:sticky;top:0;z-index:2;display:flex;align-items:flex-start;justify-content:space-between;gap:var(--space-4);padding:var(--space-6) 0 var(--space-3);background:var(--color-surface)}
+  #features .chead h2{margin:0}
+  #features .x{flex:0 0 auto;width:36px;height:36px;padding:0;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:19px;line-height:1}
+  #features .foot{position:sticky;bottom:0;margin-top:var(--space-5);padding:var(--space-4) 0 0;background:var(--color-surface)}
+</style>
+
+<style>
+  /* a bottom:0 sticky child stops at the content box — move the bottom padding
+     into the footer so the bar covers the card right down to its edge */
+  #features .card{padding-bottom:0}
+  #features .foot{padding:var(--space-4) 0 var(--space-6)}
+  @media (max-width:760px){
+    #features .card{padding-bottom:0}
+    #features .foot{padding-bottom:calc(var(--space-6) + env(safe-area-inset-bottom))}
+  }
+</style>
 </head>
 <body>
 <div class="wrap">
@@ -95,7 +133,7 @@
     <div>
       <h1>myCampal Ford Tourneo Custom</h1>
     </div>
-    <span class="tag tag-outline" style="align-self:center">v2.1.0</span>
+    <span class="tag tag-outline" style="align-self:center">v2.2.0</span>
     <button id="menu-toggle" class="btn btn-secondary" type="button" aria-expanded="false" aria-controls="legend">Controls</button>
     <div class="legend" id="legend">
       <div class="sheet-head">
@@ -133,7 +171,8 @@
           <button id="bedmode-toggle" class="btn btn-secondary" type="button">Bed: folding</button>
         </span>
       </div>
-      <a class="btn btn-primary" href="cut-plan.html?v2.1.0-1789598486210">Cut plan</a>
+      <button id="features-toggle" class="btn btn-secondary" type="button">Key features</button>
+      <a class="btn btn-primary" href="cut-plan.html?v2.2.0-1789635063905">Cut plan</a>
     </div>
     <div id="scrim"></div>
   </div>
@@ -176,9 +215,9 @@
     </figure>
   </div>
 </div>
-<script src="./image-slot.js?v2.1.0-1789598486210"></script>
-<script src="./three-d-stage.js?v2.1.0-1789598486210"></script>
-<script type="module" src="./camping-box-model.js?v2.1.0-1789598486210"></script>
+<script src="./image-slot.js?v2.2.0-1789635063905"></script>
+<script src="./three-d-stage.js?v2.2.0-1789635063905"></script>
+<script type="module" src="./camping-box-model.js?v2.2.0-1789635063905"></script>
 <script>
   /* delegated from the document so it works however the page is loaded */
   (function () {
@@ -235,6 +274,68 @@
         replaying = false;
       }, 220);
     }, true);
+  })();
+</script>
+<div id="features" role="dialog" aria-modal="true" aria-labelledby="features-title">
+  <div class="card">
+    <div class="chead">
+      <h2 id="features-title">Key features</h2>
+      <button class="btn btn-secondary x" id="features-x" type="button" aria-label="Close">&times;</button>
+    </div>
+    <p class="sub">myCampal box for the Ford Tourneo Custom — 1200 × 715 × 590 mm, floor-mounted on two cleats.</p>
+    <dl>
+      <div>
+        <dt>Bed, 2000 mm</dt>
+        <dd>Panels run out over the drawers and land on the cab-end support bar. Side wings fold down to 1550 mm across. Sliding and folding mechanisms both modelled.</dd>
+      </div>
+      <div>
+        <dt>Lounger</dt>
+        <dd>The forward panel lifts on a ply prop into a backrest, with the overlay board staying flat beneath it.</dd>
+      </div>
+      <div>
+        <dt>Kitchen drawer</dt>
+        <dd>Twin-burner stove on the upper deck with a windshield, a fold-down side table front, and a side-opening tray at full extension.</dd>
+      </div>
+      <div>
+        <dt>Storage crate</dt>
+        <dd>Deep open crate with hand-hole cut-outs, 240 mm high.</dd>
+      </div>
+      <div>
+        <dt>Prep drawer</dt>
+        <dd>Two lift-off ply lids: chopping boards one way up, steel trivet bars on the reverse.</dd>
+      </div>
+      <div>
+        <dt>Dual-access fridge</dt>
+        <dd>Compressor fridge centred in its drawer with a latched front at each end, so it runs out off the tailgate or forward into the load bay.</dd>
+      </div>
+      <div>
+        <dt>Middle-bay shelf</dt>
+        <dd>Removable hatch front that seats at two heights, with the bay open front and back so gear passes through from the cab.</dd>
+      </div>
+      <div>
+        <dt>Tables</dt>
+        <dd>Two-half pedestal table on posts for the seating bay, plus a single-post bedside table that clips flat to the cab-end face when stowed.</dd>
+      </div>
+      <div>
+        <dt>Travel mode</dt>
+        <dd>Every panel folds flat with the wings nesting and the legs stowing into the stack, level with the deck.</dd>
+      </div>
+    </dl>
+    <div class="foot"><button id="features-close" class="btn btn-primary" type="button">Explore the model</button></div>
+  </div>
+</div>
+<script>
+  /* key features: up on open, and from the Controls menu afterwards */
+  (function () {
+    const panel = document.getElementById('features');
+    if (!panel) return;
+    const show = () => panel.classList.add('open');
+    const hide = () => panel.classList.remove('open');
+    document.addEventListener('click', e => {
+      if (e.target.closest('#features-toggle')) { show(); return; }
+      if (e.target.closest('#features-close') || e.target.closest('#features-x') || e.target === panel) hide();
+    });
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') hide(); });
   })();
 </script>
 </body>

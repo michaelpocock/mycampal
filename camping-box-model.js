@@ -307,8 +307,8 @@ const bsPost = tube('bedside_post', 0.026, BS_LEN, 0, 0, 0, M.steel, tableParts,
 /* stowed: clipped flat to the cab-end face of the box, on the drawer-bay side,
    portrait so it stays inside the bay width; the leg stands beside it, collapsed */
 const FORE_FACE = BOXZ - D / 2;
-const BSS_X = 0.410 - TBLX, BSS_Y = 0.290, BSS_Z = (FORE_FACE - 0.011) - TBLZ;
-const BSP_STOW_X = 0.214 - TBLX, BSP_STOW_Y = 0.285, BSP_STOW_Z = (FORE_FACE - 0.030) - TBLZ;
+const BSS_X = -0.410 - TBLX, BSS_Y = 0.290, BSS_Z = (FORE_FACE - 0.011) - TBLZ;
+const BSP_STOW_X = -0.214 - TBLX, BSP_STOW_Y = 0.285, BSP_STOW_Z = (FORE_FACE - 0.030) - TBLZ;
 const BSP_STOW_LEN = 0.450;
 
 let tblStow = false, tblBedside = false, remP = 0, bsP = 0;
@@ -345,7 +345,7 @@ function poseTable() {
   /* --- the bedside table: its own top and post, off the box's aft face --- */
   const b2 = bsP;
   bsTable.rotation.x = -Math.PI / 2 * (1 - b2);
-  bsTable.rotation.y = Math.PI / 2 * (1 - b2);   /* portrait while clipped to the drawer front */
+  bsTable.rotation.y = -Math.PI / 2 * (1 - b2);   /* portrait while clipped to the drawer front */
   /* the stowed table is clipped to the box, so it travels in with it */
   const ride = 1 - b2;
   bsTable.position.set(lerp(BSS_X, BS_POST_X, b2),
@@ -444,7 +444,11 @@ carcass.add(bsFoot);
 bsFoot.position.set(0, T + 0.006, POST_HOLE_Z);
 /* hand-sized carry slots, two high two low at each end of both side panels */
 const SLOT_L = 0.12, SLOT_H = 0.034, SLOT_INSET = 0.055;
-function sidePanel(name, sx) {
+/* cable exits for the fridge: round holes in the right-hand side at fridge-bay
+   height, one fore and one aft, so the lead reaches whichever way the drawer runs */
+const CABLE_R = 0.014;
+const CABLE_HOLES = [-0.13, 0.13];
+function sidePanel(name, sx, cableHoles) {
   const h = H - T, r = SLOT_H / 2;
   const sh = new THREE.Shape();
   sh.moveTo(-D / 2, -h / 2); sh.lineTo(D / 2, -h / 2); sh.lineTo(D / 2, h / 2);
@@ -458,21 +462,43 @@ function sidePanel(name, sx) {
       sh.holes.push(p);
     }
   }
+  const cy = 0.205 - (T + h / 2);   /* fridge-bay height, in panel-local terms */
+  for (const zc of (cableHoles || [])) {
+    const p = new THREE.Path();
+    p.absarc(zc, cy, CABLE_R, 0, Math.PI * 2, true);
+    sh.holes.push(p);
+  }
   const geo = new THREE.ExtrudeGeometry(sh, { depth: T, bevelEnabled: false });
   geo.rotateY(Math.PI / 2); geo.translate(-T / 2, 0, 0);
   const m = new THREE.Mesh(geo, M.ply); m.name = name; m.castShadow = m.receiveShadow = true;
   m.position.set(sx * (W / 2 - T / 2), T + (H - T) / 2, 0);
   carcass.add(m);
+  /* rubber grommet in each cable hole, so the lead does not chafe on the ply */
+  for (const zc of (cableHoles || [])) {
+    const g = new THREE.Mesh(new THREE.CylinderGeometry(CABLE_R, CABLE_R, T + 0.006, 20, 1, true), M.stove);
+    g.name = name + '_cable_grommet_' + (zc < 0 ? 'fore' : 'aft');
+    g.rotation.z = Math.PI / 2;
+    g.position.set(m.position.x, 0.205, zc);
+    carcass.add(g);
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(CABLE_R + 0.004, 0.004, 8, 22), M.stove);
+    ring.name = name + '_cable_ring_' + (zc < 0 ? 'fore' : 'aft');
+    ring.rotation.y = Math.PI / 2;
+    ring.position.set(sx * (W / 2 + 0.001), 0.205, zc);
+    carcass.add(ring);
+  }
 }
 sidePanel('carcass_side_left', -1);
-sidePanel('carcass_side_right', 1);
+sidePanel('carcass_side_right', 1, CABLE_HOLES);
 box('carcass_divider_left',  T, H - T, D, -divX, T + (H - T) / 2, 0, M.ply, carcass);
 box('carcass_divider_right', T, H - T, D,  divX, T + (H - T) / 2, 0, M.ply, carcass);
-/* the van-side panel closes the two drawer bays only — the middle bay is open
-   front and back so gear can pass through from the cab side */
-for (const [side, sx] of [['left', -1], ['right', 1]]) {
-  box('carcass_front_panel_' + side, bayW, H - T, T, sx * (bayW + T), T + (H - T) / 2, -D / 2 + T / 2, M.ply_dark, carcass);
-}
+/* the van-side panel closes the left bay full height; the middle bay is open
+   front and back so gear can pass through from the cab side. On the right it
+   closes only above the fridge bay — the fridge is dual access, so its bay is
+   open at both ends and the drawer can run out either way. */
+box('carcass_front_panel_left', bayW, H - T, T, -(bayW + T), T + (H - T) / 2, -D / 2 + T / 2, M.ply_dark, carcass);
+const FRIDGE_BAY_TOP = 0.416;   /* underside of the shelf over drawer 4 */
+box('carcass_front_panel_right', bayW, H - FRIDGE_BAY_TOP, T, (bayW + T),
+    FRIDGE_BAY_TOP + (H - FRIDGE_BAY_TOP) / 2, -D / 2 + T / 2, M.ply_dark, carcass);
 /* the top deck is fixed over the two drawer bays; the strip over the middle bay
    is a lift-out panel, taken away in the lounger pose */
 const DECK_W = (W - bayW) / 2;
@@ -529,12 +555,12 @@ for (const [side, sx] of [['left', -1], ['right', 1]]) {
 box('cleat_right', 0.05, 0.03, D - 0.10,  W / 2 - 0.06, 0.0155, 0, M.steel, carcass);
 
 /* ---- clips for the stowed lounger table, on the cab-end face ----
-   the top hangs portrait over the right bay and the leg stands beside it,
+   the top hangs portrait over the left bay and the leg stands beside it,
    both kept clear of the open middle bay */
 {
   const faceZ = -D / 2, panelOut = faceZ - 0.022;
   for (const [lvl, cy] of [['upper', 0.455], ['lower', 0.125]]) {
-    for (const [edge, ex] of [['outer', 0.580], ['inner', 0.240]]) {
+    for (const [edge, ex] of [['outer', -0.580], ['inner', -0.240]]) {
       box('table_stow_clip_' + lvl + '_' + edge, 0.026, 0.030, 0.022,
         ex, cy, faceZ - 0.011, M.steel, carcass);
       box('table_stow_catch_' + lvl + '_' + edge, 0.034, 0.018, 0.008,
@@ -544,9 +570,9 @@ box('cleat_right', 0.05, 0.03, D - 0.10,  W / 2 - 0.06, 0.0155, 0, M.steel, carc
   /* cradle clips for the collapsed leg, just inboard of the top */
   for (const [lvl, cy] of [['upper', 0.455], ['lower', 0.125]]) {
     box('table_stow_leg_clip_' + lvl, 0.022, 0.024, 0.058,
-      0.214, cy, faceZ - 0.029, M.steel, carcass);
+      -0.214, cy, faceZ - 0.029, M.steel, carcass);
     box('table_stow_leg_catch_' + lvl, 0.060, 0.016, 0.008,
-      0.214, cy, faceZ - 0.062, M.latch, carcass);
+      -0.214, cy, faceZ - 0.062, M.latch, carcass);
   }
 }
 
@@ -590,11 +616,29 @@ function drawer(name, cx, out, kitchen) {
   box(name + '_base', dW, T, dD, 0, T / 2, 0, M.ply, g);
   const crate = name === 'drawer_left_lower';
   if (crate) {
+    /* the outboard side keeps its hand-hole; the inboard side is cut away so the
+       crate can be reached from across the tailgate with the cooker drawer out
+       above it, with elastic webbing across the opening to hold the load in */
+    const CUT_W = 0.34, CUT_H = 0.15, CUT_Z = 0.02, CUT_Y = 0.112;
     for (const sx of [-1, 1]) {
       const side2 = sx < 0 ? 'left' : 'right';
-      const p = pillPlate(name + '_side_' + side2, dD, dh, T, 0.13, 0.05, -0.06, dh - 0.055, M.ply, g);
+      const big = sx > 0;
+      const p = big
+        ? pillPlate(name + '_side_' + side2, dD, dh, T, CUT_W, CUT_H, CUT_Z, CUT_Y, M.ply, g)
+        : pillPlate(name + '_side_' + side2, dD, dh, T, 0.13, 0.05, -0.06, dh - 0.055, M.ply, g);
       p.rotation.y = Math.PI / 2;
       p.position.set(sx < 0 ? -dW / 2 : dW / 2 - T, 0, 0);
+    }
+    {
+      const px = dW / 2 - T / 2;
+      /* three shock cords, hooked to anchor tabs just past each end of the cutout */
+      for (const [tag, dy] of [['upper', 0.048], ['middle', 0], ['lower', -0.048]]) {
+        tube(name + '_webbing_' + tag, 0.006, CUT_W - 0.02, px, CUT_Y + dy, CUT_Z, M.stove, g, 'z');
+      }
+      for (const [tag, sz] of [['fore', -1], ['aft', 1]]) {
+        box(name + '_webbing_anchor_' + tag, T, CUT_H + 0.03, 0.016,
+            px, CUT_Y, CUT_Z + sz * (CUT_W / 2 - 0.004), M.steel, g);
+      }
     }
     const bk = pillPlate(name + '_back', dW - 2 * T, dh, T, 0.16, 0.05, 0, dh - 0.055, M.ply, g);
     bk.position.set(0, 0, -dD / 2);
@@ -631,8 +675,8 @@ function drawer(name, cx, out, kitchen) {
   let fridgeLid = null;
   if (name === 'drawer_right_lower') {
     const fw = dW - 2 * T - 0.006, fd = 0.48, fhh = 0.33;
-    /* sits at the tailgate end so the whole fridge — and its lid — clears the carcass when out */
-    const fz = dD / 2 - fd / 2 - 0.005;
+    /* centred in the drawer: dual access, so it has to clear the carcass whichever way it runs out */
+    const fz = 0;
     box(name + '_fridge_body', fw, fhh, fd, 0, T + fhh / 2, fz, M.trim, g);
     box(name + '_fridge_liner', fw - 0.06, fhh - 0.05, fd - 0.08, 0, T + fhh / 2 + 0.03, fz, M.cushion, g);
     box(name + '_fridge_panel', 0.16, 0.06, 0.014, -0.09, T + 0.24, fz + fd / 2 + 0.004, M.stove, g);
@@ -650,6 +694,16 @@ function drawer(name, cx, out, kitchen) {
     box(name + '_lid', fw, 0.026, fd, fw / 2, 0.013, 0, M.cushion, fridgeLid);
     box(name + '_lid_seal', fw - 0.03, 0.008, fd - 0.03, fw / 2, -0.004, 0, M.stove, fridgeLid);
     box(name + '_lid_catch', 0.03, 0.03, 0.10, fw - 0.02, 0.02, 0, M.steel, fridgeLid);
+    /* dual access: a second front at the cab end, latched the same way, so the
+       drawer reads finished whichever face is showing */
+    const forePivot = new THREE.Group(); forePivot.name = name + '_fore_front_hinge';
+    forePivot.position.set(0, fh, -D / 2 + 0.011); forePivot.rotation.y = Math.PI; g.add(forePivot);
+    box(name + '_fore_front', bayW - 0.012, fh, 0.022, 0, -fh / 2, 0, M.accent, forePivot);
+    for (const sx of [-1, 1]) {
+      const side2 = sx < 0 ? 'left' : 'right';
+      box(name + '_fore_latch_' + side2, 0.052, 0.036, 0.016, sx * (bayW / 2 - 0.03), -fh + 0.026, -0.019, M.latch, forePivot);
+      tube(name + '_fore_latch_lever_' + side2, 0.009, 0.036, sx * (bayW / 2 - 0.03), -fh + 0.026, -0.030, M.latch, forePivot);
+    }
   }
   model.add(g);
   if (name === 'drawer_right_upper') {
@@ -754,7 +808,7 @@ const drawerRefs = [
   { n: 1, g: leftDrawer, key: 'drawer_left_upper', hinge: left.frontPivot, tabletop: true },
   { n: 2, g: d2.g, key: 'drawer_left_lower', hinge: d2.frontPivot },
   { n: 3, g: d3.g, key: 'drawer_right_upper', hinge: d3.frontPivot },
-  { n: 4, g: d4.g, key: 'drawer_right_lower', hinge: d4.frontPivot, lid: d4.fridgeLid, tabletop: true },
+  { n: 4, g: d4.g, key: 'drawer_right_lower', hinge: d4.frontPivot, lid: d4.fridgeLid, tabletop: true, dir: 1 },
 ];
 
 /* ---- removable door across the middle bay: lifts out and goes back in as a shelf ---- */
@@ -1525,10 +1579,11 @@ function dollyWithDrawer(p) {
 }
 
 function setOut(ref, out) {
-  ref.g.position.z = BOXZ + out;
+  const dir = ref.dir || 1;   /* -1 runs the drawer out the cab end instead */
+  ref.g.position.z = BOXZ + out * dir;
   for (const r of (runnersByDrawer[ref.key] || [])) {
     r.scale.z = (RUN_L + out) / RUN_L;
-    r.position.z = BOXZ + RUN_Z + out / 2;
+    r.position.z = BOXZ + RUN_Z + (out / 2) * dir;
   }
   const open = Math.min(1, Math.max(0, (out / OPEN - 0.5) / 0.5));
   /* on the top two drawers the front folds out flat and becomes a side table */
@@ -1999,6 +2054,18 @@ if (peopleBtn) peopleBtn.addEventListener('click', () => {
   for (const g of occupants) g.visible = peopleShown && folded < 0.02;
 });
 
+const fridgeSideBtn = document.getElementById('fridge-side-toggle');
+let fridgeUserDir = 1;   /* the side the user chose, restored after the demo leg */
+function setFridgeSide(dir) {
+  drawerRefs[3].dir = dir;
+  if (fridgeSideBtn) fridgeSideBtn.textContent = dir === 1 ? 'Fridge: out the back' : 'Fridge: into the van';
+  anim.d4.apply(anim.d4.p);   /* re-seat it on the new side straight away */
+}
+if (fridgeSideBtn) fridgeSideBtn.addEventListener('click', () => {
+  fridgeUserDir = drawerRefs[3].dir === 1 ? -1 : 1;
+  setFridgeSide(fridgeUserDir);
+});
+
 const drawerBtn = document.getElementById('drawer-toggle');
 /* with the photos up and every drawer shut, the button's only job is to clear them */
 function syncDrawerBtn() {
@@ -2013,7 +2080,7 @@ function anyDrawerOpen() { return pinRefs.some(d => anim['d' + d.n].target === 1
 let seqTimers = [];
 let bubblesPinned = false;
 let seqRunning = false;   /* true only while the drawer run itself is playing */
-function stopSequence() { for (const t of seqTimers) clearTimeout(t); seqTimers = []; seqRunning = false; trayClosing = false; lidsClosing = false; shelfLowering = false; }
+function stopSequence() { for (const t of seqTimers) clearTimeout(t); seqTimers = []; seqRunning = false; trayClosing = false; lidsClosing = false; shelfLowering = false; if (drawerRefs[3].dir !== fridgeUserDir) setFridgeSide(fridgeUserDir); }
 function holdStill() {
   userOrbiting = false;
   fromTheta = null;
@@ -2028,6 +2095,10 @@ function runDrawerSequence() {
   stopSequence();
   seqRunning = true;
   const HOLD = 350, GAP = 500;
+  /* with the bed folded away and at least two seats out, there is room to stand
+     in the load bay — so the run also shows the fridge coming out the cab end */
+  const seatsRemoved = Object.values(seatGroups).filter(g => g && !g.visible).length;
+  const showInsideFridge = anim.bed.target === 1 && seatsRemoved >= 2;
   /* the hatch panel goes back in too, so the run starts from a complete box */
   if (hatchOut) { hatchOut = false; applyHatch(); labels(); }
   /* the middle-bay panel goes back in first, so the run always starts from a
@@ -2059,6 +2130,13 @@ function runDrawerSequence() {
     }
     seqTimers.push(setTimeout(() => { a.target = 0; }, at + a.ms + HOLD + extra));
     t = at + a.ms * 2 + HOLD + extra + GAP;
+  }
+  if (showInsideFridge) {
+    const a4 = anim.d4, at = t, dwell = a4.ms + HOLD + 600;
+    seqTimers.push(setTimeout(() => { setFridgeSide(-1); a4.target = 1; }, at));
+    seqTimers.push(setTimeout(() => { a4.target = 0; }, at + dwell));
+    seqTimers.push(setTimeout(() => { setFridgeSide(fridgeUserDir); }, at + dwell + a4.ms));
+    t = at + dwell + a4.ms + GAP;
   }
   /* each one opens and shuts once — hovering a front still peeks it afterwards */
   seqTimers.push(setTimeout(() => {
@@ -2449,26 +2527,38 @@ if (vanBtn) vanBtn.addEventListener('click', () => {
 const hoverRay = new THREE.Raycaster(), hoverPt = new THREE.Vector2();
 const frontMeshes = drawerRefs.map(d => {
   const m = d.hinge.getObjectByName(d.key + '_front');
-  if (m) m.userData.drawerN = d.n;
+  if (m) { m.userData.drawerN = d.n; m.userData.peekDir = 1; }
   return m;
 }).filter(Boolean);
-let hoverN = 0, hoverTimer = null;
+/* the fridge's cab-end front is a front in its own right: hovering it runs the
+   drawer out into the van instead of off the tailgate */
+{
+  const m = drawerRefs[3].g.getObjectByName('drawer_right_lower_fore_front');
+  if (m) { m.userData.drawerN = 4; m.userData.peekDir = -1; frontMeshes.push(m); }
+}
+let hoverN = 0, hoverDir = 1, hoverTimer = null;
 function closePeek() {
   clearTimeout(hoverTimer); hoverTimer = null;
   if (!hoverN) return;
-  anim['d' + hoverN].target = 0;
+  const n = hoverN;
+  anim['d' + n].target = 0;
   hoverN = 0;
+  /* once it is back in, hand the fridge side back to whatever the user picked */
+  if (n === 4 && drawerRefs[3].dir !== fridgeUserDir) {
+    setTimeout(() => { if (!hoverN && !seqRunning) setFridgeSide(fridgeUserDir); }, anim.d4.ms);
+  }
   if (!anyDrawerOpen() && drawerBtn) drawerBtn.textContent = 'Open drawers';
 }
-function peekDrawer(n) {
+function peekDrawer(n, dir) {
   if (seqRunning) return;   /* the run owns the drawers until it is done */
-  if (n === hoverN) return;
+  if (n === hoverN && dir === hoverDir) return;
   closePeek();   /* moving off a front, or onto another one, shuts the last */
-  hoverN = n;
+  hoverN = n; hoverDir = dir || 1;
   if (!n) return;
   stopDemo();
   stopSequence();
   bubblesPinned = false;
+  if (n === 4) setFridgeSide(hoverDir);   /* after stopSequence, which resets the side */
   const a = anim['d' + n];
   a.target = 1;
   if (drawerBtn) drawerBtn.textContent = 'Close drawers';
@@ -2483,7 +2573,7 @@ function onStageMove(e) {
   const hit = hoverRay.intersectObjects(frontMeshes, false)[0];
   const n = hit ? hit.object.userData.drawerN : 0;
   r.domElement.style.cursor = n ? 'pointer' : '';
-  peekDrawer(n);
+  peekDrawer(n, hit ? (hit.object.userData.peekDir || 1) : 1);
 }
 function bindStageHover() {
   const r = stage._renderer;
