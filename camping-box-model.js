@@ -7,6 +7,7 @@ const M = {
   ply:      new THREE.MeshStandardMaterial({ color: 0xa9a7a2, roughness: 0.78, metalness: 0.02 }),
   ply_dark: new THREE.MeshStandardMaterial({ color: 0x7d7b77, roughness: 0.8,  metalness: 0.02 }),
   accent:   new THREE.MeshStandardMaterial({ color: 0x1b1a19, roughness: 0.5, metalness: 0.06 }),
+  badge:    new THREE.MeshStandardMaterial({ color: 0x000000, roughness: 0.5, metalness: 0.06 }),   /* fridge fronts, matched to the badge ground */
   steel:    new THREE.MeshStandardMaterial({ color: 0xb9b7b2, roughness: 0.35, metalness: 0.35 }),
   cushion:  new THREE.MeshStandardMaterial({ color: 0xd2d0cb, roughness: 0.95, metalness: 0.0 }),
   cushion_face: new THREE.MeshStandardMaterial({ color: 0x555f80, roughness: 0.95, metalness: 0.0 }),
@@ -591,6 +592,24 @@ logoTex.colorSpace = THREE.SRGBColorSpace;
 const logoMat = new THREE.MeshBasicMaterial({ map: logoTex, transparent: true });
 logoMat.name = 'campal_logo';
 
+/* engraved badge on the fridge fronts: white line art on a black plaque, so it
+   reads against the front whichever way the drawer is facing */
+const engraveTex = new THREE.TextureLoader().load('assets/badge-inverted.png');
+engraveTex.colorSpace = THREE.SRGBColorSpace;
+engraveTex.anisotropy = 8;
+/* lit the same way as the front it sits on, so the plaque ground disappears into it */
+const engraveMat = new THREE.MeshStandardMaterial({
+  map: engraveTex, roughness: 0.5, metalness: 0.06,
+  polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2,
+});
+engraveMat.name = 'chasing_tides_engraving';
+function engrave(name, size, parent, y, z) {
+  const m = new THREE.Mesh(new THREE.PlaneGeometry(size, size), engraveMat);
+  m.name = name; m.position.set(0, y, z + 0.002); m.renderOrder = 2;
+  parent.add(m);
+  return m;
+}
+
 function pillPlate(name, w, h, thick, holeW, holeH, hcx, hcy, mat, parent) {
   const shp = new THREE.Shape();
   shp.moveTo(-w / 2, 0); shp.lineTo(w / 2, 0); shp.lineTo(w / 2, h); shp.lineTo(-w / 2, h); shp.lineTo(-w / 2, 0);
@@ -650,7 +669,8 @@ function drawer(name, cx, out, kitchen) {
   const fh = dh + 0.02;
   const frontPivot = new THREE.Group(); frontPivot.name = name + '_front_hinge';
   frontPivot.position.set(0, fh, D / 2 - 0.011); g.add(frontPivot);   /* hinged along its top edge; shut, the face sits flush with the carcass edge */
-  box(name + '_front', bayW - 0.012, fh, 0.022, 0, -fh / 2, 0, M.accent, frontPivot);
+  box(name + '_front', bayW - 0.012, fh, 0.022, 0, -fh / 2, 0,
+      name === 'drawer_right_lower' ? M.badge : M.accent, frontPivot);
   /* two small blue latches near the bottom edge, as in the reference photo */
   for (const sx of [-1, 1]) {
     const side2 = sx < 0 ? 'left' : 'right';
@@ -696,14 +716,16 @@ function drawer(name, cx, out, kitchen) {
     box(name + '_lid_catch', 0.03, 0.03, 0.10, fw - 0.02, 0.02, 0, M.steel, fridgeLid);
     /* dual access: a second front at the cab end, latched the same way, so the
        drawer reads finished whichever face is showing */
+    engrave(name + '_engraving', Math.min(fh - 0.03, 0.26), frontPivot, -fh / 2, 0.0125);
     const forePivot = new THREE.Group(); forePivot.name = name + '_fore_front_hinge';
     forePivot.position.set(0, fh, -D / 2 + 0.011); forePivot.rotation.y = Math.PI; g.add(forePivot);
-    box(name + '_fore_front', bayW - 0.012, fh, 0.022, 0, -fh / 2, 0, M.accent, forePivot);
+    box(name + '_fore_front', bayW - 0.012, fh, 0.022, 0, -fh / 2, 0, M.badge, forePivot);
     for (const sx of [-1, 1]) {
       const side2 = sx < 0 ? 'left' : 'right';
       box(name + '_fore_latch_' + side2, 0.052, 0.036, 0.016, sx * (bayW / 2 - 0.03), -fh + 0.026, -0.019, M.latch, forePivot);
       tube(name + '_fore_latch_lever_' + side2, 0.009, 0.036, sx * (bayW / 2 - 0.03), -fh + 0.026, -0.030, M.latch, forePivot);
     }
+    engrave(name + '_fore_engraving', Math.min(fh - 0.03, 0.26), forePivot, -fh / 2, 0.0125);
   }
   model.add(g);
   if (name === 'drawer_right_upper') {
@@ -2251,6 +2273,52 @@ if (drawersFloat) drawersFloat.addEventListener('click', () => { if (drawerBtn) 
 if (tableFloat) tableFloat.addEventListener('click', () => { if (tableBtn) tableBtn.click(); });
 labels();
 uiReady = true;
+
+/* ---- tweaks: three presets that reshape how the whole thing reads ---- */
+const FINISHES = {
+  birch:    { ply: 0xa9a7a2, ply_dark: 0x7d7b77, trim: 0x8a867e, trim_dk: 0x55524d, worktop: 0x2e2b28, accent: 0x1b1a19 },
+  walnut:   { ply: 0x8a6a4e, ply_dark: 0x6b4f38, trim: 0x7d6a58, trim_dk: 0x4c3a2b, worktop: 0x3a2b20, accent: 0x241a12 },
+  charcoal: { ply: 0x6f6e6c, ply_dark: 0x4c4b49, trim: 0x63625f, trim_dk: 0x3a3937, worktop: 0x1d1c1b, accent: 0x111110 },
+};
+const LIGHTS = {
+  studio: { bg: '#ffffff', hemi: [0xffffff, 0xd8d2c4, 1.0], key: [0xffffff, 2.2], fill: [0xfff4e6, 0.5] },
+  golden: { bg: '#e8cfa8', hemi: [0xffe3bd, 0xb08c5c, 0.85], key: [0xffc271, 2.6], fill: [0xffd9a8, 0.7] },
+  dusk:   { bg: '#1e232b', hemi: [0x9fb6d6, 0x1a1d22, 0.55], key: [0xdfe8ff, 1.5], fill: [0xffb677, 0.9] },
+};
+const sceneLights = { hemi: null, key: null, fill: null };
+if (stage._scene) {
+  stage._scene.traverse(o => {
+    if (o.isHemisphereLight) sceneLights.hemi = o;
+    else if (o.isDirectionalLight) { if (o.castShadow) sceneLights.key = o; else sceneLights.fill = o; }
+  });
+}
+const baseMs = {};
+for (const [k, a] of Object.entries(anim)) baseMs[k] = a.ms;
+const PACE = { brisk: 0.6, natural: 1, cinematic: 1.7 };
+window.campalTweaks = {
+  finish(key) {
+    const f = FINISHES[key] || FINISHES.birch;
+    for (const [m, hex] of Object.entries(f)) if (M[m]) M[m].color.setHex(hex);
+    M.door.color.copy(M.trim.color);
+    M.door_dk.color.copy(M.trim_dk.color);
+    M.trim_clear.color.copy(M.trim.color);
+  },
+  light(key) {
+    const l = LIGHTS[key] || LIGHTS.studio;
+    stage.style.setProperty('--stage-bg', l.bg);
+    if (sceneLights.hemi) { sceneLights.hemi.color.setHex(l.hemi[0]); sceneLights.hemi.groundColor.setHex(l.hemi[1]); sceneLights.hemi.intensity = l.hemi[2]; }
+    if (sceneLights.key) { sceneLights.key.color.setHex(l.key[0]); sceneLights.key.intensity = l.key[1]; }
+    if (sceneLights.fill) { sceneLights.fill.color.setHex(l.fill[0]); sceneLights.fill.intensity = l.fill[1]; }
+    document.documentElement.classList.toggle('stage-dark', key === 'dusk');
+  },
+  pace(key) {
+    const k = PACE[key] || 1;
+    for (const [n, a] of Object.entries(anim)) a.ms = Math.round(baseMs[n] * k);
+  },
+};
+/* the panel is clickable long before this module finishes building the model,
+   so apply anything the user already picked, then tell it we are live */
+window.dispatchEvent(new CustomEvent('campal-tweaks-ready'));
 
 /* frame the camera on whatever is currently visible */
 function reframe() {

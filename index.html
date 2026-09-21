@@ -126,12 +126,85 @@
     #features .foot{padding-bottom:calc(var(--space-6) + env(safe-area-inset-bottom))}
   }
 </style>
+
+<style>
+  /* intro splash: the two badges, up once on load */
+  #intro{position:fixed;inset:0;z-index:30;display:flex;align-items:center;justify-content:center;padding:var(--space-4);box-sizing:border-box;background:var(--color-surface);cursor:pointer;transition:opacity .45s ease}
+  #intro.gone{opacity:0;pointer-events:none}
+  #intro .intro-stack{display:flex;flex-direction:column;align-items:center;gap:var(--space-6);text-align:center}
+  #intro h1{font-family:var(--font-heading);font-size:clamp(30px,6vw,52px);margin:0;letter-spacing:-0.01em}
+  #intro .marks{display:flex;align-items:center;justify-content:center;gap:clamp(24px,6vw,64px);flex-wrap:wrap}
+  #intro .marks img{display:block}
+  #intro .marks img.campal{width:clamp(180px,32vw,320px);height:auto}
+  #intro .marks img.tides{width:clamp(140px,22vw,220px);height:auto}
+  #intro .hint{margin:0;font-size:13px;color:color-mix(in srgb, var(--color-text) 55%, transparent)}
+</style>
+
+<style>
+  /* intro splash: black ground, one item per line */
+  #intro{background:#000}
+  #intro h1{color:#fff}
+  #intro .marks{flex-direction:column;gap:clamp(24px,5vh,48px)}
+  #intro .marks img.tides{filter:invert(1)}
+  #intro .hint{color:rgba(255,255,255,0.55)}
+</style>
+
+<style>
+  /* intro splash: keep the stack centred in the viewport, scrolling only if it overflows */
+  #intro{align-items:center;overflow-y:auto}
+  #intro .intro-stack{margin:auto;justify-content:center}
+</style>
+
+<style>
+  /* intro holds until the enter button is pressed */
+  #intro{cursor:default}
+  #intro .enter{min-width:200px;min-height:48px;font-size:15px;background:#fff;color:#000;border-color:#fff}
+  #intro .enter:hover{background:#e8e8e8}
+</style>
+
+<style>
+  /* the stack must stay reachable on short windows: scroll rather than clip */
+  #intro{display:block;padding:0;overflow:auto}
+  #intro .intro-stack{min-height:100%;box-sizing:border-box;padding:var(--space-6) var(--space-4);margin:0;justify-content:center}
+</style>
+
+<style>
+  /* children must not shrink, or the wrap never grows and the last item clips */
+  #intro .intro-stack > *{flex:0 0 auto}
+  #intro .marks > *{flex:0 0 auto}
+</style>
+
+<style>
+  /* page heading: wordmark with the tides badge alongside */
+  .head h1{display:flex;align-items:center;gap:10px}
+  .head h1 img{height:6.4em;width:auto;display:block}
+</style>
+
+<style>
+  /* scoped, so the page's generic .wrap rules cannot clamp or clip the stack */
+  #intro .intro-stack{height:auto;min-height:100%;overflow:visible;padding:32px 20px;box-sizing:border-box}
+</style>
+
+<style>
+  /* page ground: black, with the type and chrome inverted to suit */
+  body{background:#000;color:#fff}
+  .wrap{color:#fff}
+  .head h1{color:#fff}
+  .head h1 img{filter:invert(1)}
+  .tag, .tag-outline{color:#fff;border-color:rgba(255,255,255,0.4)}
+</style>
+
+<style>
+  /* the Controls button has to read against the black header */
+  #menu-toggle{background:#fff;color:#000;border-color:#fff}
+  #menu-toggle:hover{background:#e8e8e8}
+</style>
 </head>
 <body>
 <div class="wrap">
   <div class="head">
     <div>
-      <h1>myCampal Ford Tourneo Custom</h1>
+      <h1><img src="uploads/pasted-1789893444481-0.png" alt="Chasing tides, easy rides">ourCampal</h1>
     </div>
     <span class="tag tag-outline" style="align-self:center">v2.2.0</span>
     <button id="menu-toggle" class="btn btn-secondary" type="button" aria-expanded="false" aria-controls="legend">Controls</button>
@@ -177,7 +250,7 @@
     <div id="scrim"></div>
   </div>
   <div class="stage-wrap">
-    <three-d-stage name="tourneo-camping-box" autorotate></three-d-stage>
+    <three-d-stage name="tourneo-camping-box" background="#ffffff" autorotate></three-d-stage>
     <div id="pins"></div>
     <button id="box-toggle" class="btn btn-primary" type="button">Fit camping box</button>
     <button id="bed-float" class="btn btn-primary stage-btn" type="button">Unfold bed</button>
@@ -336,6 +409,24 @@
       if (e.target.closest('#features-close') || e.target.closest('#features-x') || e.target === panel) hide();
     });
     document.addEventListener('keydown', e => { if (e.key === 'Escape') hide(); });
+  })();
+</script>
+<div id="intro" role="dialog" aria-label="ourCampal">
+  <div class="intro-stack">
+    <div class="marks">
+      <img class="tides" src="uploads/pasted-1789893444481-0.png" alt="Chasing tides, easy rides">
+      <img class="campal" src="uploads/pasted-1788457834817-0.png" alt="myCampal">
+    </div>
+    <button class="btn btn-primary enter" id="intro-enter" type="button">Enter</button>
+  </div>
+</div>
+<script>
+  (function () {
+    const intro = document.getElementById('intro');
+    if (!intro) return;
+    const go = () => intro.classList.add('gone');
+    document.getElementById('intro-enter').addEventListener('click', go);
+    document.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === 'Escape') go(); });
   })();
 </script>
 </body>
