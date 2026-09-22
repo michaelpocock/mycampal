@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>myCampal — Ford Tourneo Custom</title>
-<link rel="stylesheet" href="assets/ds-styles.css?v2.2.0-1789635063905">
+<link rel="stylesheet" href="assets/ds-styles.css?v2.3.0-1790060612689">
 <script type="importmap">
 {
   "imports": {
@@ -97,8 +97,11 @@
   #features h2{font-family:var(--font-heading);font-size:24px;margin:0 0 4px}
   #features .sub{margin:0 0 var(--space-4);color:color-mix(in srgb, var(--color-text) 65%, transparent);font-size:14px}
   #features dl{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:var(--space-4) var(--space-4);margin:0}
-  #features dt{font-family:var(--font-heading);font-size:15px;margin:0 0 2px}
+  #features dt{font-family:var(--font-heading);font-size:15px;margin:0 0 2px;color:#000}
   #features dd{margin:0;font-size:14px;line-height:1.45;color:color-mix(in srgb, var(--color-text) 78%, transparent);text-wrap:pretty}
+  #features h3{font-family:var(--font-heading);font-size:13px;letter-spacing:.08em;text-transform:uppercase;margin:var(--space-6) 0 var(--space-3);padding-bottom:6px;border-bottom:1px solid var(--color-neutral-300);color:var(--color-accent)}
+  #features dt .n{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;margin-right:7px;border-radius:50%;background:var(--color-accent);color:var(--color-bg);font-size:12px;vertical-align:1px}
+  #features .dl-row{display:flex;flex-wrap:wrap;gap:var(--space-2)}
   #features .foot{display:flex;justify-content:flex-end;margin-top:var(--space-6)}
   @media (max-width:760px){
     #features{padding:0;align-items:flex-end}
@@ -110,7 +113,8 @@
 <style>
   /* the close affordance must stay put however far the list scrolls */
   #features .card{padding-top:0}
-  #features .chead{position:sticky;top:0;z-index:2;display:flex;align-items:flex-start;justify-content:space-between;gap:var(--space-4);padding:var(--space-6) 0 var(--space-3);background:var(--color-surface)}
+  #features .chead{position:sticky;top:0;z-index:2;display:flex;align-items:flex-start;justify-content:space-between;gap:var(--space-4);padding:var(--space-4) var(--space-4) var(--space-4);margin:0 calc(-1 * var(--space-6));background:var(--color-accent);color:var(--color-bg)}
+  #features .chead h2{color:var(--color-bg)}
   #features .chead h2{margin:0}
   #features .x{flex:0 0 auto;width:36px;height:36px;padding:0;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:19px;line-height:1}
   #features .foot{position:sticky;bottom:0;margin-top:var(--space-4);padding:var(--space-4) 0 0;background:var(--color-surface)}
@@ -196,17 +200,20 @@
 
 <style>
   /* the Controls button has to read against the black header */
-  #menu-toggle{background:#fff;color:#000;border-color:#fff}
+  #menu-toggle{background:#fff;color:#000;border-color:#fff;margin-left:0}
   #menu-toggle:hover{background:#e8e8e8}
+  #features-toggle{background:#fff;color:#000;border-color:#fff;align-self:center;flex:0 0 auto;margin-left:auto}
+  #features-toggle:hover{background:#e8e8e8}
 </style>
 </head>
 <body>
 <div class="wrap">
   <div class="head">
     <div>
-      <h1><img src="uploads/pasted-1789893444481-0.png" alt="Chasing tides, easy rides">ourCampal</h1>
+      <h1><img src="assets/chasing-tides-mark.jpg" alt="Chasing tides, easy rides">ourCampal</h1>
     </div>
-    <span class="tag tag-outline" style="align-self:center">v2.2.0</span>
+    <span class="tag tag-outline" style="align-self:center">v2.3.0</span>
+    <button id="features-toggle" class="btn btn-secondary" type="button">Key features</button>
     <button id="menu-toggle" class="btn btn-secondary" type="button" aria-expanded="false" aria-controls="legend">Controls</button>
     <div class="legend" id="legend">
       <div class="sheet-head">
@@ -216,7 +223,7 @@
         </span>
       </div>
       <div class="ctl-group">
-        <span class="ctl-label">Camping box</span>
+        <span class="ctl-label">myCampal</span>
         <span class="group">
           <button id="drawer-toggle" class="btn btn-secondary" type="button">Open drawers</button>
           <button id="bed-toggle" class="btn btn-secondary" type="button">Unfold bed</button>
@@ -225,7 +232,7 @@
           <button id="hatch-toggle" class="btn btn-secondary" type="button">Remove hatch panel</button>
           <button id="cushions-toggle" class="btn btn-secondary" type="button">Remove all cushions</button>
           <button id="people-toggle" class="btn btn-secondary" type="button">Show Julia &amp; Mike</button>
-          <button id="box-remove" class="btn btn-secondary" type="button">Remove camping box</button>
+          <button id="box-remove" class="btn btn-secondary" type="button">Remove myCampal</button>
         </span>
       </div>
       <div class="ctl-group">
@@ -244,15 +251,13 @@
           <button id="bedmode-toggle" class="btn btn-secondary" type="button">Bed: folding</button>
         </span>
       </div>
-      <button id="features-toggle" class="btn btn-secondary" type="button">Key features</button>
-      <a class="btn btn-primary" href="cut-plan.html?v2.2.0-1789635063905">Cut plan</a>
     </div>
     <div id="scrim"></div>
   </div>
   <div class="stage-wrap">
     <three-d-stage name="tourneo-camping-box" background="#ffffff" autorotate></three-d-stage>
     <div id="pins"></div>
-    <button id="box-toggle" class="btn btn-primary" type="button">Fit camping box</button>
+    <button id="box-toggle" class="btn btn-primary" type="button">Fit myCampal</button>
     <button id="bed-float" class="btn btn-primary stage-btn" type="button">Unfold bed</button>
     <button id="drawers-float" class="btn btn-primary stage-btn" type="button">Open drawers</button>
     <button id="table-float" class="btn btn-primary stage-btn" type="button">Stow table</button>
@@ -288,9 +293,9 @@
     </figure>
   </div>
 </div>
-<script src="./image-slot.js?v2.2.0-1789635063905"></script>
-<script src="./three-d-stage.js?v2.2.0-1789635063905"></script>
-<script type="module" src="./camping-box-model.js?v2.2.0-1789635063905"></script>
+<script src="./image-slot.js?v2.3.0-1790060612689"></script>
+<script src="./three-d-stage.js?v2.3.0-1790060612689"></script>
+<script type="module" src="./camping-box-model.js?v2.3.0-1790060612689"></script>
 <script>
   /* delegated from the document so it works however the page is loaded */
   (function () {
@@ -355,35 +360,46 @@
       <h2 id="features-title">Key features</h2>
       <button class="btn btn-secondary x" id="features-x" type="button" aria-label="Close">&times;</button>
     </div>
-    <p class="sub">myCampal box for the Ford Tourneo Custom — 1200 × 715 × 590 mm, floor-mounted on two cleats.</p>
+    <p class="sub">myCampal for the Ford Tourneo Custom — 1200 × 715 × 590 mm, floor-mounted on two cleats.</p>
+    <h3>Sleeping</h3>
     <dl>
       <div>
         <dt>Bed, 2000 mm</dt>
-        <dd>Panels run out over the drawers and land on the cab-end support bar. Side wings fold down to 1550 mm across. Sliding and folding mechanisms both modelled.</dd>
+        <dd>Panels run out over the drawers, with the far end resting either on the folded seat backs where the seats are still fitted, or on the fold-out legs and the top of the main table where they are not. Side wings fold down to 1550 mm across. Sliding and folding mechanisms both modelled.</dd>
       </div>
       <div>
         <dt>Lounger</dt>
         <dd>The forward panel lifts on a ply prop into a backrest, with the overlay board staying flat beneath it.</dd>
       </div>
+    </dl>
+    <h3>Drawers</h3>
+    <dl>
       <div>
-        <dt>Kitchen drawer</dt>
+        <dt><span class="n">1</span>Kitchen drawer</dt>
         <dd>Twin-burner stove on the upper deck with a windshield, a fold-down side table front, and a side-opening tray at full extension.</dd>
       </div>
       <div>
-        <dt>Storage crate</dt>
-        <dd>Deep open crate with hand-hole cut-outs, 240 mm high.</dd>
+        <dt><span class="n">2</span>Storage drawer</dt>
+        <dd>Deep open crate with hand-hole cut-outs, 240 mm high. Two removable full-width dividers drop between cleats at any of three depths.</dd>
       </div>
       <div>
-        <dt>Prep drawer</dt>
+        <dt><span class="n">3</span>Prep drawer</dt>
         <dd>Two lift-off ply lids: chopping boards one way up, steel trivet bars on the reverse.</dd>
       </div>
       <div>
-        <dt>Dual-access fridge</dt>
+        <dt><span class="n">4</span>Dual-access fridge</dt>
         <dd>Compressor fridge centred in its drawer with a latched front at each end, so it runs out off the tailgate or forward into the load bay.</dd>
       </div>
       <div>
-        <dt>Middle-bay shelf</dt>
-        <dd>Removable hatch front that seats at two heights, with the bay open front and back so gear passes through from the cab.</dd>
+        <dt><span class="n">5</span>Middle-bay door</dt>
+        <dd>Lifts out on a hand hole at the top edge, then slides into runner channels at either of two heights — half in, half proud. Three steel bars across its face take a hot pan.</dd>
+      </div>
+    </dl>
+    <h3>Elsewhere in the box</h3>
+    <dl>
+      <div>
+        <dt>Through-bay webbing</dt>
+        <dd>Elastic cord crossing between the bay dividers on D-rings and karabiners, so a load is held in at the cab end and unclips in one pull. The bay stays open front and back for gear passed through from the cab.</dd>
       </div>
       <div>
         <dt>Tables</dt>
@@ -391,9 +407,15 @@
       </div>
       <div>
         <dt>Travel mode</dt>
-        <dd>Every panel folds flat with the wings nesting and the legs stowing into the stack, level with the deck.</dd>
+        <dd>Every panel folds flat with the wings nesting and the legs stowing into the stack, level with the deck. The three mattress pads stack on top, held by a buckled webbing strap across their width.</dd>
       </div>
     </dl>
+    <h3>Downloads</h3>
+    <div class="dl-row">
+      <a class="btn btn-secondary" href="cut-plan.html?v2.3.0-1790060612689">Cut plan</a>
+      <a class="btn btn-secondary" href="assets/chasing-tides-badge-200mm.svg" download>Badge 200 mm (SVG)</a>
+      <a class="btn btn-secondary" href="assets/chasing-tides-badge-200mm.eps" download>Badge 200 mm (EPS)</a>
+    </div>
     <div class="foot"><button id="features-close" class="btn btn-primary" type="button">Explore the model</button></div>
   </div>
 </div>
@@ -414,7 +436,7 @@
 <div id="intro" role="dialog" aria-label="ourCampal">
   <div class="intro-stack">
     <div class="marks">
-      <img class="tides" src="uploads/pasted-1789893444481-0.png" alt="Chasing tides, easy rides">
+      <img class="tides" src="assets/chasing-tides-mark.jpg" alt="Chasing tides, easy rides">
       <img class="campal" src="uploads/pasted-1788457834817-0.png" alt="myCampal">
     </div>
     <button class="btn btn-primary enter" id="intro-enter" type="button">Enter</button>
