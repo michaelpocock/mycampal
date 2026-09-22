@@ -283,6 +283,75 @@ function tableHalf(tag) {
   return { g, top, plate, hw };
 }
 const halfA = tableHalf('a'), halfB = tableHalf('b');
+
+/* ---- alternate top: the fold-out leaf table. The centre panel is fixed to the
+   two posts and a leaf each side folds up and over onto it, the pair meeting on
+   the centreline when packed. Same footprint deployed as the tier-drop top. ---- */
+const FL_D = 0.76, FL_T = 0.018, FL_S = FL_D / 2, FL_LS = FL_D / 4;   /* fixed centre, with a half-width leaf hinged along each long edge */
+function slab(name, len, d, r0, r1, thk, mat, parent) {
+  const hd = d / 2, sh = new THREE.Shape();
+  sh.moveTo(r0, -hd);
+  sh.lineTo(len - r1, -hd);
+  sh.absarc(len - r1, -hd + r1, r1, -Math.PI / 2, 0, false);
+  sh.lineTo(len, hd - r1);
+  sh.absarc(len - r1, hd - r1, r1, 0, Math.PI / 2, false);
+  sh.lineTo(r0, hd);
+  sh.absarc(r0, hd - r0, r0, Math.PI / 2, Math.PI, false);
+  sh.lineTo(0, -hd + r0);
+  sh.absarc(r0, -hd + r0, r0, Math.PI, Math.PI * 1.5, false);
+  const geo = new THREE.ExtrudeGeometry(sh, { depth: thk, bevelEnabled: false, curveSegments: 16 });
+  geo.rotateX(-Math.PI / 2); geo.translate(0, -thk / 2, 0);
+  const m = new THREE.Mesh(geo, mat); m.name = name;
+  m.castShadow = m.receiveShadow = true;
+  parent.add(m);
+  return m;
+}
+const leafTop = new THREE.Group(); leafTop.name = 'leaf_table'; tableParts.add(leafTop);
+/* it also splits across the width on the centreline: each half is a whole table
+   in itself, its own post under it, so half can stand alone when the second row
+   of seats is out. The folds run the length — a strip hinged along each long
+   edge of the fixed centre, flipping up and over onto it. */
+const FL_HALF = TBL_W / 2;
+const leafHinges = [];
+function leafHalf(tag, sx) {
+  const g = new THREE.Group(); g.name = 'leaf_table_half_' + tag; leafTop.add(g);
+  const x0 = sx < 0 ? -FL_HALF : 0;
+  const rNose = sx < 0 ? 0.055 : 0.012, rTail = sx < 0 ? 0.012 : 0.03;
+  const c = slab('leaf_table_centre_' + tag, FL_HALF, FL_S, rNose, rTail, FL_T, M.ply, g);
+  c.position.x = x0;
+  box('leaf_table_top_plate_' + tag, 0.18, 0.012, 0.11, sx * LEGDX, -0.015, 0, M.steel, g);
+  for (const sz of [-1, 1]) {
+    const nm = tag + '_' + (sz < 0 ? 'front' : 'rear');
+    const h = new THREE.Group(); h.name = 'leaf_table_hinge_' + nm;
+    h.position.set(0, FL_T / 2, sz * FL_S / 2);
+    g.add(h);
+    const arm = new THREE.Group(); arm.name = 'leaf_table_leaf_' + nm;
+    arm.position.y = -FL_T / 2;
+    h.add(arm);
+    const bd = slab('leaf_table_leaf_board_' + nm, FL_HALF, FL_LS, rNose, rTail, FL_T, M.ply, arm);
+    bd.position.set(x0, 0, sz * FL_LS / 2);
+    for (const dx of [0.16, 0.52]) {
+      tube('leaf_table_knuckle_' + nm + '_' + Math.round(dx * 100),
+           0.008, 0.10, x0 + dx, 0.006, 0, M.steel, arm, 'x');
+    }
+    leafHinges.push({ h, sz });
+  }
+  return g;
+}
+const leafHalfA = leafHalf('a', -1), leafHalfB = leafHalf('b', 1);
+/* the two halves pull together on a pair of over-centre toggle latches screwed
+   to the underside of the fixed centres, clear of the leaves above */
+const leafLatch = new THREE.Group(); leafLatch.name = 'leaf_table_latch';
+leafTop.add(leafLatch);
+for (const dz of [-0.09, 0.09]) {
+  const sfx = dz < 0 ? 'front' : 'rear';
+  box('leaf_table_latch_body_' + sfx, 0.060, 0.016, 0.030, -0.040, -FL_T / 2 - 0.008, dz, M.latch, leafLatch);
+  box('leaf_table_latch_lever_' + sfx, 0.036, 0.009, 0.012, -0.086, -FL_T / 2 - 0.013, dz, M.latch, leafLatch);
+  box('leaf_table_latch_keeper_' + sfx, 0.026, 0.014, 0.024, 0.018, -FL_T / 2 - 0.007, dz, M.latch, leafLatch);
+  tube('leaf_table_latch_dowel_' + sfx, 0.004, 0.056, 0, -FL_T / 2 - 0.002, dz + 0.035, M.steel, leafLatch, 'x');
+}
+let leafMode = true, leafFolded = false, foldP = 0;
+var foldBtn = null;
 const tPost = tube('table_post', 0.030, POST_LEN, 0, 0, 0, M.steel, tableParts, 'y');
 const tFoot = roundPlate('table_foot_plate', 0.16, 0.16, 0.012, 0.045, M.steel, tableParts);
 const tPost2 = tube('table_post_2', 0.030, POST_LEN, 0, 0, 0, M.steel, tableParts, 'y');
@@ -315,32 +384,37 @@ const BSS_X = -0.410 - TBLX, BSS_Y = 0.290, BSS_Z = (FORE_FACE - 0.011) - TBLZ;
 const BSP_STOW_X = -0.214 - TBLX, BSP_STOW_Y = 0.285, BSP_STOW_Z = (FORE_FACE - 0.030) - TBLZ;
 const BSP_STOW_LEN = 0.450;
 
-let tblStow = false, tblBedside = false, remP = 0, bsP = 0, bs2P = 0;
+let tblStow = false, tblBedside = false, remP = 0, bsP = 0, bs2P = 0, stowP = 0;
 var bsHideStowed = true;   /* the van starts empty, so the stowed bedside table is hidden */
 var fitOffY = 0, fitOffZ = 0;   /* the box's own travel, so the stowed table rides with it */
 function poseTable() {
   tableBoard.visible = true;
+  poseLeafTop();
   tFoot.visible = tFoot2.visible = true;   /* screwed to the board */
-  const away = tblStow ? 1 : 0;
+  const away = stowP;   /* tweened, so it is seen coming apart and going away */
+  /* it goes over the seat backs, not through them: it lifts clear first, carries
+     across at height, and only then comes down into the space behind the cab */
+  const carry = tblCarry, rise = tblRise;
   /* --- half A: stays on the board unless the whole table is put away --- */
   const a = away;
   halfA.g.rotation.x = -Math.PI / 2 * a;
   halfA.g.position.set(lerp(TOPDX - HALF_W, TOPDX - HALF_W + 0.02, a),
-    lerp(tblH, 0.30, a) + 0.09 * Math.sin(Math.PI * a), lerp(0, STOW_Z, a));
+    lerp(tblH, 0.30, a) + rise(a), lerp(0, STOW_Z, carry(a)));
   halfA.plate.visible = a < 0.5;
   const pLen = tblH - 0.05, pScale = pLen / POST_LEN;
   tPost.scale.y = pScale;
-  tPost.position.set(lerp(TOPDX - LEGDX, POST_X, a), lerp(0.036 + pLen / 2, 0.32, a), lerp(0, POST_Z, a));
+  tPost.position.set(lerp(TOPDX - LEGDX, POST_X, a),
+    lerp(0.036 + pLen / 2, 0.32, a) + rise(a) * 0.5, lerp(0, POST_Z, carry(a)));
   /* --- half B: fitted, or lifted out and stowed --- */
   const s = Math.max(away, remP);
   let bx, by, bz, brx, px, py, pz, psx, psy;
   {
     bx = lerp(TOPDX, TOPDX + 0.02, s);
-    by = lerp(tblH, 0.30, s) + 0.09 * Math.sin(Math.PI * s);
-    bz = lerp(0, STOW_Z, s); brx = -Math.PI / 2 * s;
+    by = lerp(tblH, 0.30, s) + rise(s);
+    bz = lerp(0, STOW_Z, carry(s)); brx = -Math.PI / 2 * s;
     px = lerp(TOPDX + LEGDX, POST_X + 0.09, s);
-    py = lerp(0.036 + pLen / 2, 0.32, s);
-    pz = lerp(0, POST_Z, s);
+    py = lerp(0.036 + pLen / 2, 0.32, s) + rise(s) * 0.5;
+    pz = lerp(0, POST_Z, carry(s));
     psx = 1; psy = pScale;
   }
   halfB.g.rotation.x = brx; halfB.g.position.set(bx, by, bz);
@@ -369,7 +443,49 @@ function poseTable() {
   bsTable.visible = !hideBs;
   bsPost.visible = !hideBs;
 }
-function setTableStowed(stowed, bedside) { tblStow = stowed; tblBedside = bedside; poseTable(); }
+/* the leaf top lives in the same place as the tier-drop one and rides the same
+   posts, so only one of the two is ever in the van */
+function tblSm(v) { v = Math.min(1, Math.max(0, v)); return v * v * (3 - 2 * v); }
+function tblCarry(p) { return tblSm((p - 0.40) / 0.48); }   /* the run forward, finished before it drops */
+function tblRise(p) {
+  /* up over the seat backs, held at full height for the whole run, down only
+     once it is past them — the slab is ~380 mm tall on edge, so the lift has to
+     keep its underside above the tallest back */
+  const up = tblSm(Math.min(1, p / 0.34)), dn = tblSm(Math.max(0, (p - 0.92) / 0.08));
+  return 1.12 * up * (1 - dn);
+}
+function poseLeafTop() {
+  leafTop.visible = leafMode;
+  halfA.g.visible = halfB.g.visible = !leafMode;
+  if (!leafMode) return;
+  const t = stowP;
+  /* a trifold: the outboard leaf comes over onto the centre first, the inboard
+     one folds on top of it */
+  const cl = v => Math.min(1, Math.max(0, v)), sm = v => v * v * (3 - 2 * v);
+  /* both leaves come over together and butt on the centreline */
+  const f1 = sm(cl(foldP)), arc = Math.sin(Math.PI * f1);
+  /* the knuckles ride up a little as the leaves swing over, then settle flat on
+     the centre so the folded pack is two boards thick */
+  for (const { h, sz } of leafHinges) {
+    h.rotation.x = -sz * Math.PI * f1;
+    h.position.y = FL_T / 2 + 0.012 * arc;
+  }
+  /* with the second row of seats out, only half the table stands, on one post */
+  leafHalfB.visible = remP < 0.5;
+  leafLatch.visible = leafHalfB.visible;   /* nothing to latch to with one half out */
+  leafTop.rotation.x = -Math.PI / 2 * t;
+  leafTop.position.set(lerp(TOPDX, TOPDX + 0.02, t),
+    lerp(tblH, 0.30, t) + tblRise(t), lerp(0, STOW_Z, tblCarry(t)));
+}
+function setTableFold(p) { foldP = p; poseTable(); }
+var tstowTrack = null;   /* wired up once the animation tracks exist */
+function setTableStowed(stowed, bedside) {
+  tblStow = stowed; tblBedside = bedside;
+  if (tstowTrack) tstowTrack.target = stowed ? 1 : 0;
+  else stowP = stowed ? 1 : 0;
+  poseTable();
+}
+function setTableTravel(p) { stowP = p; poseTable(); }
 function setHalfBOut(p) { remP = p; poseTable(); }        /* lifted off for the two-seat layout */
 function setBedsideMove(p) { bsP = p; poseTable(); }      /* half B travelling to the bedside pose */
 function setBedsidePos(p) { bs2P = p; poseTable(); }     /* 0 cab-end socket · 1 centre socket */
@@ -1936,6 +2052,8 @@ const anim = {
     });
   } },
   leaf: { p: 0, target: 0, ms: 1100, apply: p => setHalfBOut(ease(p)) },
+  fleaf: { p: 0, target: 0, ms: 2200, apply: p => setTableFold(ease(p)) },
+  tstow: { p: 0, target: 0, ms: 2000, apply: p => setTableTravel(ease(p)) },
   bside: { p: 0, target: 0, ms: 1500, apply: p => setBedsideMove(ease(p)) },
   bspos: { p: 0, target: 0, ms: 1600, apply: p => setBedsidePos(ease(p)) },
   bed:    { p: 1, target: 1, ms: 3400, apply: p => setFold(ease(p)) },
@@ -1959,6 +2077,11 @@ const anim = {
 anim.bed.gate = () => anim.bed.target === 1
   || (anim.seats.p === 1 && (cushionsOut || anim.strap.p === 1));
 anim.strap.gate = () => anim.strap.target === 1 || anim.bed.p === 1;
+tstowTrack = anim.tstow;
+tstowTrack.p = tstowTrack.target = stowP;
+/* going away the leaves fold first; coming back it travels out before unfolding */
+anim.tstow.gate = () => anim.tstow.target === 0 || !leafMode || anim.fleaf.p === 1;
+anim.fleaf.gate = () => anim.fleaf.target === 1 || anim.tstow.p < 0.001;
 anim.seats.gate = () => anim.seats.target === 1 || anim.bed.p === 1;
 /* the backrest can only rise once the bed is flat and down */
 anim.recline.gate = () => anim.recline.target === 0 || anim.bed.p === 0;
@@ -2070,7 +2193,8 @@ function placePins() {
     /* with the box out of the van, the table is the thing on screen — put its
        control on the table when it is up, and on the box when it is stowed */
     const show = boxOut && anim.fit.p < 0.002;
-    const label = tableStowed ? 'Set up table' : 'Stow table';
+    const label = typeof tableCycleLabel === 'function' ? tableCycleLabel()
+      : (tableStowed ? 'Set up table' : 'Stow table');
     if (tableFloat.textContent !== label) tableFloat.textContent = label;
     /* always anchored to the floor socket between the seats, where the post stands
        when the table is set up — so the control sits in one place either way */
@@ -2078,15 +2202,17 @@ function placePins() {
     /* the tailgate-pinned fit button projects to nearly this same point when the box
        is on the tarmac — a constant offset separates them without a feedback loop */
     if (tableFloat.style.opacity === '1') {
-      tableFloat.style.transform += ' translateY(-72px)';
+      const fitUp = boxBtnEl && boxBtnEl.style.opacity === '1';
+      tableFloat.style.transform += fitUp ? ' translateY(-124px)' : ' translateY(-72px)';
     }
   }
+  if (typeof refreshTableLabels === 'function') refreshTableLabels();
   /* whichever control is out on the model leaves the menu, and vice versa */
   const bedFloatOn = bedFloat && bedFloat.style.opacity === '1';
   if (bedBtn) bedBtn.dataset.floating = (bedFloatOn && bedFloat.textContent !== 'Lounger') ? '1' : '';
   if (loungeBtn) loungeBtn.dataset.floating = (bedFloatOn && bedFloat.textContent === 'Lounger') ? '1' : '';
   if (drawerBtn) drawerBtn.dataset.floating = (drawersFloat && drawersFloat.style.opacity === '1') ? '1' : '';
-  if (tableBtn) tableBtn.dataset.floating = (tableFloat && tableFloat.style.opacity === '1') ? '1' : '';
+  if (tableBtn) tableBtn.dataset.floating = '';   /* the table controls stay in the menu as well */
   for (const b of [bedBtn, loungeBtn, drawerBtn, tableBtn]) {
     if (b && !b.dataset.boxHidden) b.style.display = b.dataset.floating ? 'none' : '';
   }
@@ -2579,7 +2705,7 @@ if (bedFloat) bedFloat.addEventListener('click', () => {
   if (target) target.click();
 });
 if (drawersFloat) drawersFloat.addEventListener('click', () => { if (drawerBtn) drawerBtn.click(); });
-if (tableFloat) tableFloat.addEventListener('click', () => { if (tableBtn) tableBtn.click(); });
+if (tableFloat) tableFloat.addEventListener('click', cycleTable);
 labels();
 uiReady = true;
 
@@ -2723,7 +2849,7 @@ function refreshSeatButtons() {
   else if (frontOut) { hide(seatsOutBtn); hide(allSeatsBtn); }
 }
 
-let tableStowed = true;   /* the van starts empty — the table travels stowed */
+let tableStowed = false;   /* it starts set up, unfolded, in the seating bay */
 function applyTableMode() {
   /* the bed lands on the table — it can never be stowed while the bed is down.
      The lounger is the exception: only its own table goes away. */
@@ -2749,20 +2875,64 @@ function applyTableMode() {
      but with the hatch panel fitted it stays in the cab-end socket */
   anim.bspos.target = (bedside && anim.bside.p > 0.999 && hatchOut) ? 1 : 0;
   if (full) anim.leaf.target = 0;
-  tableUnit.visible = boxRemoved() ? !mainStowed : (vanSolid.visible || !mainStowed);
+  /* the leaves fold on their own button, and always as the table goes away */
+  anim.fleaf.target = (leafMode && (mainStowed || leafFolded)) ? 1 : 0;
+
+  /* the table is the van's, not the box's — it stays in the van, stowed or not */
+  tableUnit.visible = true;
   if (tableBtn) tableBtn.textContent = lounger
     ? (tableStowed ? 'Set up lounger table' : 'Stow lounger table')
-    : (tableStowed ? 'Set up table' : 'Stow table');
+    : tableCycleLabel();
+}
+/* the table controls all step through the same cycle:
+   set up · unfold · fold · stow */
+let leafStep = 0;   /* 0 up, unfolded · 1 folded · 2 unfolded again · 3 away */
+function tableCycleLabel() {
+  if (!leafMode) return tableStowed ? 'Set up table' : 'Stow table';
+  return ['Fold table', 'Unfold table', 'Stow table', 'Set up table'][leafStep];
+}
+function cycleTable() {
+  if (!leafMode) { tableStowed = !tableStowed; leafFolded = false; }
+  else {
+    leafStep = (leafStep + 1) % 4;
+    tableStowed = leafStep === 3;
+    leafFolded = leafStep === 1 || leafStep === 3;
+  }
+  if (!tableStowed) anim.doors.target = 1;   /* nothing goes in through a shut door */
+  applyTableMode();
+  updateVisBox();
+  refreshTableLabels();
+}
+function refreshTableLabels() {
+  const l = tableCycleLabel();
+  for (const b of [tableBtn, tableFloat]) if (b && b.textContent !== l) b.textContent = l;
+  if (foldBtn) {
+    const fl = tableStowed ? l : (leafFolded ? 'Unfold table' : 'Fold table');
+    if (foldBtn.textContent !== fl) foldBtn.textContent = fl;
+  }
 }
 const tableBtn = document.getElementById('table-toggle');
 applyTableMode();   /* start stowed */
-if (tableBtn) tableBtn.addEventListener('click', () => {
-  tableStowed = !tableStowed;
-  if (!tableStowed) anim.doors.target = 1;   /* nothing goes in through a shut door */
+if (tableBtn) tableBtn.addEventListener('click', cycleTable);
+
+foldBtn = document.getElementById('tablefold-toggle');
+if (foldBtn) foldBtn.addEventListener('click', () => {
+  if (tableStowed) { cycleTable(); return; }   /* nothing to fold until it is up */
+  leafStep = leafFolded ? 2 : 1;
+  leafFolded = leafStep === 1;
   applyTableMode();
-  /* the table and the bed now stand together — stowing the table is the only
-     thing that takes it away */
-  updateVisBox();
+  refreshTableLabels();
+});
+const tableTypeBtn = document.getElementById('tabletype-toggle');
+function refreshTableType() {
+  if (tableTypeBtn) tableTypeBtn.textContent = leafMode ? 'Tier-drop table' : 'Fold-out leaf table';
+}
+refreshTableType();
+if (tableTypeBtn) tableTypeBtn.addEventListener('click', () => {
+  leafMode = !leafMode;
+  refreshTableType();
+  applyTableMode();
+  poseTable();
 });
 
 const vanBtn = document.getElementById('van-toggle');
@@ -2836,8 +3006,7 @@ function applyView() {
   /* the set-up table belongs to the layout, not the van — keep it when the van goes */
   /* the table stays in the van when the box comes out, but only if it is set up —
      the board and socket plates go out with the box otherwise */
-  const tableUp = !tableStowed || anim.recline.target === 1;
-  tableUnit.visible = boxOut ? tableUp : (vanSolid.visible || tableUp);
+  tableUnit.visible = true;
   /* van-only controls have nothing to act on once the van is hidden */
   {
     const b = document.getElementById('doors-toggle');

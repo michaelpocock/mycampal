@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>myCampal — Ford Tourneo Custom</title>
-<link rel="stylesheet" href="assets/ds-styles.css?v2.3.0-1790060612689">
+<link rel="stylesheet" href="assets/ds-styles.css?v2.4.0-1790101776060">
 <script type="importmap">
 {
   "imports": {
@@ -210,11 +210,11 @@
 <div class="wrap">
   <div class="head">
     <div>
-      <h1><img src="assets/chasing-tides-mark.jpg" alt="Chasing tides, easy rides">ourCampal</h1>
+      <h1><img src="assets/chasing-tides-mark.jpg" alt="Chasing tides, easy rides">myCampal</h1>
     </div>
-    <span class="tag tag-outline" style="align-self:center">v2.3.0</span>
     <button id="features-toggle" class="btn btn-secondary" type="button">Key features</button>
     <button id="menu-toggle" class="btn btn-secondary" type="button" aria-expanded="false" aria-controls="legend">Controls</button>
+    <span class="tag tag-outline" style="order:99;align-self:flex-start;margin-top:-4px;margin-left:-86px">v2.4.0</span>
     <div class="legend" id="legend">
       <div class="sheet-head">
         <span class="grab"></span>
@@ -225,6 +225,7 @@
       <div class="ctl-group">
         <span class="ctl-label">myCampal</span>
         <span class="group">
+          <button id="box-remove" class="btn btn-secondary" type="button">Remove myCampal</button>
           <button id="drawer-toggle" class="btn btn-secondary" type="button">Open drawers</button>
           <button id="bed-toggle" class="btn btn-secondary" type="button">Unfold bed</button>
           <button id="lounge-toggle" class="btn btn-secondary" type="button">Lounger</button>
@@ -232,7 +233,6 @@
           <button id="hatch-toggle" class="btn btn-secondary" type="button">Remove hatch panel</button>
           <button id="cushions-toggle" class="btn btn-secondary" type="button">Remove all cushions</button>
           <button id="people-toggle" class="btn btn-secondary" type="button">Show Julia &amp; Mike</button>
-          <button id="box-remove" class="btn btn-secondary" type="button">Remove myCampal</button>
         </span>
       </div>
       <div class="ctl-group">
@@ -246,9 +246,10 @@
         </span>
       </div>
       <div class="ctl-group">
-        <span class="ctl-label">Bed mechanism</span>
+        <span class="ctl-label">Options</span>
         <span class="group">
           <button id="bedmode-toggle" class="btn btn-secondary" type="button">Bed: folding</button>
+          <button id="tabletype-toggle" class="btn btn-secondary" type="button">Tier-drop table</button>
         </span>
       </div>
     </div>
@@ -293,9 +294,9 @@
     </figure>
   </div>
 </div>
-<script src="./image-slot.js?v2.3.0-1790060612689"></script>
-<script src="./three-d-stage.js?v2.3.0-1790060612689"></script>
-<script type="module" src="./camping-box-model.js?v2.3.0-1790060612689"></script>
+<script src="./image-slot.js?v2.4.0-1790101776060"></script>
+<script src="./three-d-stage.js?v2.4.0-1790101776060"></script>
+<script type="module" src="./camping-box-model.js?v2.4.0-1790101776060"></script>
 <script>
   /* delegated from the document so it works however the page is loaded */
   (function () {
@@ -403,7 +404,7 @@
       </div>
       <div>
         <dt>Tables</dt>
-        <dd>Two-half pedestal table on posts for the seating bay, plus a single-post bedside table that clips flat to the cab-end face when stowed.</dd>
+        <dd>Pedestal table on two posts for the seating bay, in two designs. The fold-out leaf version is a fixed centre panel with a leaf hinged along each long edge, folding up and over to meet on the centreline; it splits across the width into two halves, joined by toggle latches underneath, so half of it stands on one post when the second row of seats is out. The tier-drop version is the original two loose halves, doweled and latched together. Either stows behind the cab, lifting clear of the seat backs on the way. A single-post bedside table clips flat to the cab-end face when stowed and drops into either of two foot plates in the hatch bay.</dd>
       </div>
       <div>
         <dt>Travel mode</dt>
@@ -412,7 +413,7 @@
     </dl>
     <h3>Downloads</h3>
     <div class="dl-row">
-      <a class="btn btn-secondary" href="cut-plan.html?v2.3.0-1790060612689">Cut plan</a>
+      <a class="btn btn-secondary" href="cut-plan.html?v2.4.0-1790101776060">Cut plan</a>
       <a class="btn btn-secondary" href="assets/chasing-tides-badge-200mm.svg" download>Badge 200 mm (SVG)</a>
       <a class="btn btn-secondary" href="assets/chasing-tides-badge-200mm.eps" download>Badge 200 mm (EPS)</a>
     </div>
@@ -433,7 +434,7 @@
     document.addEventListener('keydown', e => { if (e.key === 'Escape') hide(); });
   })();
 </script>
-<div id="intro" role="dialog" aria-label="ourCampal">
+<div id="intro" role="dialog" aria-label="myCampal">
   <div class="intro-stack">
     <div class="marks">
       <img class="tides" src="assets/chasing-tides-mark.jpg" alt="Chasing tides, easy rides">
