@@ -716,11 +716,10 @@ const POST_HOLE_R = 0.030;
   lin2.name = 'top_panel_post_liner_centre'; lin2.position.set(0, 0, POST_HOLE_Z2); topPanel.add(lin2);
 }
 box('top_panel_finger_slot', 0.09, 0.008, 0.022, 0, T / 2 - 0.003, D / 2 - 0.07, M.stove, topPanel);
-/* the rear rail is cut at the middle bay so the hatch opening is clear through */
-for (const [side, sx] of [['left', -1], ['right', 1]]) {
-  box('carcass_rear_rail_' + side, DECK_W, 0.05, T, sx * (W + bayW) / 4, H - T - 0.025, D / 2 - T / 2, M.ply_dark, carcass);
-}
-const hatchRail = box('carcass_rear_rail_middle', bayW, 0.05, T, 0, H - T - 0.025, D / 2 - T / 2, M.ply_dark, carcass);
+/* no rear rail over the drawer bays — the drawer fronts close the face there, and a
+   rail in the same plane flickered through their tops. Over the middle bay the rail
+   sits back behind the hatch door and its cleats so the two never share a face. */
+const hatchRail = box('carcass_rear_rail_middle', bayW, 0.05, T, 0, H - T - 0.025, D / 2 - T - 0.024 - T / 2, M.ply_dark, carcass);
 /* cross bar on the cab-end face, standing proud of the carcass — the unfolded
    bed panels land on it once they are run out over the drawers */
 /* notched at the two leg positions so the folded legs can stand down through it */
@@ -817,6 +816,40 @@ function pillPlate(name, w, h, thick, holeW, holeH, hcx, hcy, mat, parent) {
   return mesh;
 }
 
+/* drawer front with a hand-sized slot near the top edge, used as the pull */
+const DS_W = 0.110, DS_H = 0.032, DS_TOP = 0.060;   /* slot size and its drop from the top edge — clear of the 50 mm carcass rail behind the top of each front */
+function slottedFront(name, w, h, thk, mat, parent) {
+  const sh = new THREE.Shape();
+  sh.moveTo(-w / 2, -h); sh.lineTo(w / 2, -h); sh.lineTo(w / 2, 0); sh.lineTo(-w / 2, 0); sh.closePath();
+  const r = DS_H / 2, hx = DS_W / 2 - r, cy = -DS_TOP - r;
+  const hole = new THREE.Path();
+  hole.moveTo(-hx, cy - r); hole.lineTo(hx, cy - r);
+  hole.absarc(hx, cy, r, -Math.PI / 2, Math.PI / 2, false);
+  hole.lineTo(-hx, cy + r);
+  hole.absarc(-hx, cy, r, Math.PI / 2, Math.PI * 1.5, false);
+  sh.holes.push(hole);
+  const geo = new THREE.ExtrudeGeometry(sh, { depth: thk, bevelEnabled: false, curveSegments: 10 });
+  geo.translate(0, 0, -thk / 2);
+  /* the slot sits close to the top edge, so the cap triangulates into long slivers
+     whose computed normals are noisy — that shows as flickering streaks. Snap every
+     cap triangle's normals to straight out / straight in. */
+  const pos = geo.attributes.position, nrm = geo.attributes.normal;
+  for (let i = 0; i < pos.count; i += 3) {
+    const z0 = pos.getZ(i);
+    if (Math.abs(pos.getZ(i + 1) - z0) < 1e-6 && Math.abs(pos.getZ(i + 2) - z0) < 1e-6) {
+      const nz = z0 > 0 ? 1 : -1;
+      for (let k = 0; k < 3; k++) nrm.setXYZ(i + k, 0, 0, nz);
+    }
+  }
+  nrm.needsUpdate = true;
+  const m = new THREE.Mesh(geo, mat);
+  /* the slot's long, thin cap triangles show shadow acne as hatched streaks along
+     the top edge, so the fronts cast shadows but don't receive them */
+  m.name = name; m.castShadow = true; m.receiveShadow = false; m.userData.noReceive = true;
+  parent.add(m);
+  return m;
+}
+
 function drawer(name, cx, out, kitchen) {
   const [baseY, dh] = BAYS[name];
   const g = new THREE.Group(); g.name = name;
@@ -856,10 +889,19 @@ function drawer(name, cx, out, kitchen) {
     box(name + '_side_right', T, dh, dD,  dW / 2 - T / 2, y, 0, M.ply, g);
     box(name + '_back', dW - 2 * T, dh, T, 0, y, -dD / 2 + T / 2, M.ply, g);
   }
-  const fh = dh + 0.02;
+  /* each front sits inside its carcass opening with a 3 mm shadow gap all round —
+     openings in carcass coords, [bottom, top], between floor / shelf / top deck */
+  const OPENINGS = {
+    drawer_left_lower:  [T, 0.274],
+    drawer_left_upper:  [0.274 + T, H - T],
+    drawer_right_lower: [T, 0.407],
+    drawer_right_upper: [0.407 + T, H - T],
+  };
+  const FG = 0.003, [oLo, oHi] = OPENINGS[name];
+  const fTop = oHi - FG - baseY, fh = (oHi - oLo) - 2 * FG, fW = bayW - 2 * FG;
   const frontPivot = new THREE.Group(); frontPivot.name = name + '_front_hinge';
-  frontPivot.position.set(0, fh, D / 2 - 0.011); g.add(frontPivot);   /* hinged along its top edge; shut, the face sits flush with the carcass edge */
-  box(name + '_front', bayW - 0.012, fh, 0.022, 0, -fh / 2, 0,
+  frontPivot.position.set(0, fTop, D / 2 - 0.011 + 0.002); g.add(frontPivot);   /* 2 mm proud so the face doesn't z-fight the carcass shelf edges it overlaps */   /* hinged along its top edge; shut, the face sits flush with the carcass edge */
+  slottedFront(name + '_front', fW, fh, 0.022,
       name === 'drawer_right_lower' ? M.badge : M.accent, frontPivot);
   /* two small blue latches near the bottom edge, as in the reference photo */
   for (const sx of [-1, 1]) {
@@ -878,7 +920,7 @@ function drawer(name, cx, out, kitchen) {
     const lw = Math.min(0.30, bayW - 0.10), lh = lw * 84 / 568;
     const logo = new THREE.Mesh(new THREE.PlaneGeometry(lw, lh), logoMat);
     logo.name = name + '_logo';
-    logo.position.set(0, -fh / 2, 0.0125);
+    logo.position.set(0, -(fh + DS_TOP + DS_H) / 2, 0.0125);
     frontPivot.add(logo);
   }
   /* --- drawer 4: slide-out compressor fridge with a top-opening lid --- */
@@ -906,16 +948,16 @@ function drawer(name, cx, out, kitchen) {
     box(name + '_lid_catch', 0.03, 0.03, 0.10, fw - 0.02, 0.02, 0, M.steel, fridgeLid);
     /* dual access: a second front at the cab end, latched the same way, so the
        drawer reads finished whichever face is showing */
-    engrave(name + '_engraving', Math.min(fh - 0.03, 0.26), frontPivot, -fh / 2, 0.0125);
+    engrave(name + '_engraving', Math.min(fh - 0.03 - (DS_TOP + DS_H + 0.01), 0.26), frontPivot, -(fh + DS_TOP + DS_H) / 2, 0.0125);
     const forePivot = new THREE.Group(); forePivot.name = name + '_fore_front_hinge';
-    forePivot.position.set(0, fh, -D / 2 + 0.011); forePivot.rotation.y = Math.PI; g.add(forePivot);
-    box(name + '_fore_front', bayW - 0.012, fh, 0.022, 0, -fh / 2, 0, M.badge, forePivot);
+    forePivot.position.set(0, fTop, -D / 2 + 0.011 - 0.002); forePivot.rotation.y = Math.PI; g.add(forePivot);
+    slottedFront(name + '_fore_front', fW, fh, 0.022, M.badge, forePivot);
     for (const sx of [-1, 1]) {
       const side2 = sx < 0 ? 'left' : 'right';
       box(name + '_fore_latch_' + side2, 0.052, 0.036, 0.016, sx * (bayW / 2 - 0.03), -fh + 0.026, -0.019, M.latch, forePivot);
       tube(name + '_fore_latch_lever_' + side2, 0.009, 0.036, sx * (bayW / 2 - 0.03), -fh + 0.026, -0.030, M.latch, forePivot);
     }
-    engrave(name + '_fore_engraving', Math.min(fh - 0.03, 0.26), forePivot, -fh / 2, 0.0125);
+    engrave(name + '_fore_engraving', Math.min(fh - 0.03 - (DS_TOP + DS_H + 0.01), 0.26), forePivot, -(fh + DS_TOP + DS_H) / 2, 0.0125);
   }
   model.add(g);
   if (name === 'drawer_right_upper') {
@@ -1915,10 +1957,24 @@ for (const c of model.children) {
 /* ---- rest the whole thing on y = 0 ---- */
 const bounds = new THREE.Box3().setFromObject(model);
 model.position.y -= bounds.min.y;
-model.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
+model.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = !o.userData.noReceive; } });
 
 leftShield.rotation.x = 0; /* frame the camera on the widest pose */
 stage.setObject(model);
+/* steadier render: tighter depth range and a denser, normal-biased shadow map so
+   the thin drawer fronts and slots don't shimmer or show shadow acne */
+model.traverse(o => { if (o.userData.noReceive) o.receiveShadow = false; });
+(function steadyRender() {
+  const r = stage._renderer, cam = stage._camera, key = stage._key;
+  if (!r || !cam || !key) return;
+  cam.near = Math.max(cam.near, 0.05); cam.far = Math.min(cam.far, 80); cam.updateProjectionMatrix();
+  key.shadow.mapSize.set(4096, 4096);
+  key.shadow.bias = -0.0004; key.shadow.normalBias = 0.012;
+  const sc = key.shadow.camera, span = 4.2;
+  sc.left = -span; sc.right = span; sc.top = span; sc.bottom = -span;
+  sc.near = 0.5; sc.far = 25; sc.updateProjectionMatrix();
+  if (key.shadow.map) { key.shadow.map.dispose(); key.shadow.map = null; }
+})();
 
 /* The stage can end up booted-but-idle if the host re-parents it mid-boot:
    canvas left at 1px and no render loop. Re-assert size + loop after layout. */
@@ -2776,8 +2832,8 @@ function reframe() {
   const dist = Math.max(vFit, s.radius / Math.tan(hFov / 2)) * 1.08;
   const dir = cam.position.clone().sub(ctr.target).normalize();
   cam.position.copy(s.center).add(dir.multiplyScalar(dist));
-  cam.near = Math.max(dist / 100, 0.01);
-  cam.far = dist * 100;
+  cam.near = Math.max(dist / 40, 0.05);
+  cam.far = dist * 20;
   cam.updateProjectionMatrix();
   ctr.target.copy(s.center);
   ctr.update();
