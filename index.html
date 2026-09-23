@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>myCampal — Ford Tourneo Custom</title>
-<link rel="stylesheet" href="assets/ds-styles.css?v2.6.0-1790148895473">
+<link rel="stylesheet" href="assets/ds-styles.css?v2.7.0-1790169736502">
 <script type="importmap">
 {
   "imports": {
@@ -214,7 +214,7 @@
     </div>
     <button id="features-toggle" class="btn btn-secondary" type="button">Key features</button>
     <button id="menu-toggle" class="btn btn-secondary" type="button" aria-expanded="false" aria-controls="legend">Controls</button>
-    <span class="tag tag-outline" style="order:99;align-self:flex-start;margin-top:-4px;margin-left:-86px">v2.6.0</span>
+    <span class="tag tag-outline" style="order:99;align-self:flex-start;margin-top:-4px;margin-left:-86px">v2.7.0</span>
     <div class="legend" id="legend">
       <div class="sheet-head">
         <span class="grab"></span>
@@ -231,6 +231,7 @@
           <button id="lounge-toggle" class="btn btn-secondary" type="button">Lounger</button>
           <button id="table-toggle" class="btn btn-secondary" type="button">Stow table</button>
           <button id="hatch-toggle" class="btn btn-secondary" type="button">Remove hatch panel</button>
+          <button id="fridge-remove" class="btn btn-secondary" type="button">Remove fridge</button>
           <button id="cushions-toggle" class="btn btn-secondary" type="button">Remove all cushions</button>
           <button id="people-toggle" class="btn btn-secondary" type="button">Show Julia &amp; Mike</button>
         </span>
@@ -243,13 +244,6 @@
           <button id="front-seats-out-toggle" class="btn btn-secondary btn-van" type="button">Remove 2 seats</button>
           <button id="all-seats-out-toggle" class="btn btn-secondary btn-van" type="button">Remove all seats</button>
           <button id="van-toggle" class="btn btn-secondary btn-van" type="button">Hide van</button>
-        </span>
-      </div>
-      <div class="ctl-group">
-        <span class="ctl-label">Options</span>
-        <span class="group">
-          <button id="bedmode-toggle" class="btn btn-secondary" type="button">Bed: folding</button>
-          <button id="tabletype-toggle" class="btn btn-secondary" type="button">Tier-drop table</button>
         </span>
       </div>
     </div>
@@ -294,9 +288,9 @@
     </figure>
   </div>
 </div>
-<script src="./image-slot.js?v2.6.0-1790148895473"></script>
-<script src="./three-d-stage.js?v2.6.0-1790148895473"></script>
-<script type="module" src="./camping-box-model.js?v2.6.0-1790148895473"></script>
+<script src="./image-slot.js?v2.7.0-1790169736502"></script>
+<script src="./three-d-stage.js?v2.7.0-1790169736502"></script>
+<script type="module" src="./camping-box-model.js?v2.7.0-1790169736502"></script>
 <script>
   /* delegated from the document so it works however the page is loaded */
   (function () {
@@ -366,7 +360,7 @@
     <dl>
       <div>
         <dt>Bed, 2000 mm</dt>
-        <dd>Panels run out over the drawers, with the far end resting either on the folded seat backs where the seats are still fitted, or on the fold-out legs and the top of the main table where they are not. Side wings fold down to 1550 mm across. Sliding and folding mechanisms both modelled.</dd>
+        <dd>Panels run out over the drawers, with the far end resting either on the folded seat backs where the seats are still fitted, or on the fold-out legs and the top of the main table where they are not. Side wings fold down to 1550 mm across.</dd>
       </div>
       <div>
         <dt>Lounger</dt>
@@ -377,7 +371,7 @@
     <dl>
       <div>
         <dt><span class="n">1</span>Kitchen drawer</dt>
-        <dd>Twin-burner stove on the upper deck with a windshield, a fold-down side table front, and a side-opening tray at full extension.</dd>
+        <dd>Twin-burner stove on the upper deck with a windshield, a fold-down side table front, and a side-opening tray at full extension. The tray is split into three by two loose lengthwise dividers that tip up and draw out.</dd>
       </div>
       <div>
         <dt><span class="n">2</span>Storage drawer</dt>
@@ -385,11 +379,11 @@
       </div>
       <div>
         <dt><span class="n">3</span>Prep drawer</dt>
-        <dd>Two lift-off ply lids: chopping boards one way up, steel trivet bars on the reverse.</dd>
+        <dd>Two lift-off ply lids: chopping boards one way up, steel trivet bars on the reverse. Beneath them, two removable cross dividers drop between cleats, with room for three mugs in the middle compartment.</dd>
       </div>
       <div>
-        <dt><span class="n">4</span>Dual-access fridge</dt>
-        <dd>Compressor fridge centred in its drawer with a latched front at each end, so it runs out off the tailgate or forward into the load bay.</dd>
+        <dt><span class="n">4</span>Fridge drawer</dt>
+        <dd>Compressor fridge on four wheels, running out off the tailgate behind a latched front. The drawer's 150 mm sides keep the fridge easy to reach, and its back lifts out of two channels so the fridge can be rolled out of the cab end from inside the van.</dd>
       </div>
       <div>
         <dt><span class="n">5</span>Middle-bay door</dt>
@@ -404,7 +398,7 @@
       </div>
       <div>
         <dt>Tables</dt>
-        <dd>Pedestal table on two posts for the seating bay, in two designs. The fold-out leaf version is a fixed centre panel with a leaf hinged along each long edge, folding up and over to meet on the centreline; it splits across the width into two halves, joined by toggle latches underneath, so half of it stands on one post when the second row of seats is out. The tier-drop version is the original two loose halves, doweled and latched together. Either stows behind the cab, lifting clear of the seat backs on the way. A single-post bedside table clips flat to the cab-end face when stowed and drops into either of two foot plates in the hatch bay.</dd>
+        <dd>Fold-out leaf pedestal table on two posts for the seating bay: a fixed centre panel with a leaf hinged along each long edge, folding up and over to meet on the centreline; it splits across the width into two halves, joined by toggle latches underneath, so half of it stands on one post when the second row of seats is out. It stows behind the cab, lifting clear of the seat backs on the way. A single-post bedside table clips flat to the cab-end face when stowed and drops into either of two flush foot plates on the top of the box, one over each drawer bay at the cab end; the bed panel and cushions are bored to let the post through.</dd>
       </div>
       <div>
         <dt>Travel mode</dt>
@@ -413,7 +407,7 @@
     </dl>
     <h3>Downloads</h3>
     <div class="dl-row">
-      <a class="btn btn-secondary" href="cut-plan.html?v2.6.0-1790148895473">Cut plan</a>
+      <a class="btn btn-secondary" href="cut-plan.html?v2.7.0-1790169736502">Cut plan</a>
       <a class="btn btn-secondary" href="assets/chasing-tides-badge-200mm.svg" download>Badge 200 mm (SVG)</a>
       <a class="btn btn-secondary" href="assets/chasing-tides-badge-200mm.eps" download>Badge 200 mm (EPS)</a>
     </div>

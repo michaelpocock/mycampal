@@ -63,7 +63,12 @@ function tube(name, r, len, x, y, z, mat, parent = model, axis = 'x') {
 const W = 1.20, D = 0.715, H = 0.59, T = 0.018;   /* folded, the stack overhangs the fore face by ~55 mm — accepted, so the bed keeps its 2000 mm length */   /* W capped at 1200 mm (was 1370) — clears the arches with room to spare  /* old: 1390 mm between the arches, less 10 mm clearance */
 const BOXZ = 0.0075;   /* rear face stays butted to the tailgate end at z 0.295 */
 const POST_HOLE_Z = -D / 2 + 0.10;   /* far enough aft that the bedside foot plate sits wholly inside the carcass base */
-const POST_HOLE_Z2 = 0;   /* the second socket, in the centre of the hatch bay */
+const POST_HOLE_Z2 = 0;   /* (retired) the old centre socket in the hatch bay */
+/* the bedside table's two sockets sit on the top of the box, one over each drawer
+   bay, towards the cab end — flush plates let into the top deck */
+const SOCK_X = (W - 4 * T) / 3 + T;
+const SOCK_DX = 0.09;   /* both sockets sit 90 mm right of their deck centres */
+const SOCK_XL = -SOCK_X + SOCK_DX, SOCK_XR = SOCK_X + SOCK_DX;
 
 /* ---- van: load bay of a Tourneo Custom, seen from the tailgate ---- */
 const VW = 1.59, VWA = 1.22, VH = 1.32, TAIL = 0.42, CAB = -2.32;
@@ -359,15 +364,14 @@ const tFoot2 = roundPlate('table_foot_plate_2', 0.16, 0.16, 0.012, 0.045, M.stee
 /* the posts lift out; the plates they socket into stay put — two screwed to the
    floor board, a third fixed in the middle bay for the bedside pose */
 const bsFoot = roundPlate('table_foot_plate_bedside', 0.16, 0.16, 0.012, 0.045, M.steel, tableParts);
-const bsFoot2 = roundPlate('table_foot_plate_bedside_centre', 0.16, 0.16, 0.012, 0.045, M.steel, tableParts);
+const bsFoot2 = roundPlate('table_foot_plate_bedside_right', 0.16, 0.16, 0.012, 0.045, M.steel, tableParts);
 
 /* poses: set up on its board, stowed behind the seats, or — for half B alone —
    up on the wheel-arch top as a bedside table when the lounger is out */
 const STOW_Z = -2.26 - TBLZ, POST_X = -0.75 - TBLX, POST_Z = -2.14 - TBLZ;
 const BEDSIDE_TOP_Y = 0.88;
-const BS_POST_X = 0 - TBLX, BS_Z = (POST_HOLE_Z + BOXZ) - TBLZ;   /* centred in the middle bay, aft of the fore face so the foot plate is fully within the base */
-const BS_Z2 = (POST_HOLE_Z2 + BOXZ) - TBLZ;   /* the same table, dropped into the centre socket */
-const BS_BASE_Y = 0.018;   /* foot plate stands on the carcass floor inside the gap */
+const BS_X1 = SOCK_XL - TBLX, BS_X2 = SOCK_XR - TBLX, BS_Z = (POST_HOLE_Z + BOXZ) - TBLZ;   /* left and right sockets, cab end of the top deck */
+const BS_BASE_Y = H - 0.012;   /* foot plate let in flush with the top deck — the bed panels still lie flat over it */
 const BS_LEN = BEDSIDE_TOP_Y - 0.026 - BS_BASE_Y;
 const lerp = (a, b, t) => a + (b - a) * t;
 
@@ -382,7 +386,7 @@ const bsPost = tube('bedside_post', 0.026, BS_LEN, 0, 0, 0, M.steel, tableParts,
 const FORE_FACE = BOXZ - D / 2;
 const BSS_X = -0.410 - TBLX, BSS_Y = 0.290, BSS_Z = (FORE_FACE - 0.011) - TBLZ;
 const BSP_STOW_X = -0.214 - TBLX, BSP_STOW_Y = 0.285, BSP_STOW_Z = (FORE_FACE - 0.030) - TBLZ;
-const BSP_STOW_LEN = 0.450;
+const BSP_STOW_LEN = BS_LEN;   /* the short post stows at its own length */
 
 let tblStow = false, tblBedside = false, remP = 0, bsP = 0, bs2P = 0, stowP = 0;
 var bsHideStowed = true;   /* the van starts empty, so the stowed bedside table is hidden */
@@ -426,14 +430,14 @@ function poseTable() {
   bsTable.rotation.y = -Math.PI / 2 * (1 - b2);   /* portrait while clipped to the drawer front */
   /* the stowed table is clipped to the box, so it travels in with it */
   const ride = 1 - b2;
-  /* set up, the post drops into either socket — cab end or the centre of the bay */
-  const bsZ = lerp(BS_Z, BS_Z2, bs2P), hop = 0.12 * Math.sin(Math.PI * bs2P);
-  bsTable.position.set(lerp(BSS_X, BS_POST_X, b2),
+  /* set up, the post drops into either socket — left or right, on top of the box */
+  const bsZ = BS_Z, bsX = lerp(BS_X1, BS_X2, bs2P), hop = 0.12 * Math.sin(Math.PI * bs2P);
+  bsTable.position.set(lerp(BSS_X, bsX, b2),
     lerp(BSS_Y, BEDSIDE_TOP_Y, b2) + 0.14 * Math.sin(Math.PI * b2) + hop * b2 + fitOffY * ride,
     lerp(BSS_Z, bsZ, b2) + fitOffZ * ride);
   bsPost.rotation.z = 0;   /* the leg stows upright beside the top, collapsed */
   bsPost.scale.y = lerp(BSP_STOW_LEN / BS_LEN, 1, b2);
-  bsPost.position.set(lerp(BSP_STOW_X, BS_POST_X, b2),
+  bsPost.position.set(lerp(BSP_STOW_X, bsX, b2),
     lerp(BSP_STOW_Y, BS_BASE_Y + 0.012 + BS_LEN / 2, b2) + hop * b2 + fitOffY * ride,
     lerp(BSP_STOW_Z, bsZ, b2) + fitOffZ * ride);
   bsFoot.visible = bsFoot2.visible = b2 > 0.02;
@@ -499,18 +503,21 @@ const ROWS = [['row2', -0.79], ['row1', -1.65]];   /* moved back to meet the sha
 const seatPivots = [];
 const seatGroups = {};
 const SEATX = [-0.46, 0, 0.46];
+/* the two left-hand seats, one in each row, are trimmed in red */
+const M_SEAT_RED = new THREE.MeshStandardMaterial({ color: 0x8e2a2a, roughness: 0.92, metalness: 0.0 });
 
 function seat(tag, x, z, reversed) {
   const n = 'seat_' + tag;
   const gs = new THREE.Group(); gs.name = n; gs.position.set(x, 0, z); vanSolid.add(gs);
   seatGroups[tag] = gs;
   if (reversed) gs.rotation.y = Math.PI;
+  const sm = x < 0 ? M_SEAT_RED : M.seat;
 
   box(n + '_frame', 0.42, 0.40, 0.46, 0, 0.20, 0, M.trim_dk, gs);
-  box(n + '_squab', 0.46, 0.10, 0.50, 0, 0.45, 0, M.seat, gs);
+  box(n + '_squab', 0.46, 0.10, 0.50, 0, 0.45, 0, sm, gs);
   const ps = new THREE.Group(); ps.name = n + '_back_pivot'; ps.position.set(0, 0.52, 0.24); gs.add(ps);   /* folded, the back tops out at 570 mm */
-  box(n + '_back', 0.46, 0.50, 0.10, 0, 0.25, 0, M.seat, ps);   /* upright: 1040 mm overall */
-  box(n + '_headrest', 0.24, 0.15, 0.10, 0, 0.45, -0.04, M.seat, ps);
+  box(n + '_back', 0.46, 0.50, 0.10, 0, 0.25, 0, sm, ps);   /* upright: 1040 mm overall */
+  box(n + '_headrest', 0.24, 0.15, 0.10, 0, 0.45, -0.04, sm, ps);
   seatPivots.push(ps);
   box(n + '_belt_stalk', 0.05, 0.10, 0.05, 0.19, 0.50, 0.16, M.trim_dk, gs);
 
@@ -564,9 +571,9 @@ box('carcass_floor', W, T, D, 0, T / 2, 0, M.ply, carcass);
 /* the bedside socket plate is screwed to the camping box's own floor, inside the
    middle bay, so it travels with the box rather than the van */
 carcass.add(bsFoot);
-bsFoot.position.set(0, T + 0.006, POST_HOLE_Z);
+bsFoot.position.set(SOCK_XL, H - 0.006, POST_HOLE_Z);
 carcass.add(bsFoot2);
-bsFoot2.position.set(0, T + 0.006, POST_HOLE_Z2);
+bsFoot2.position.set(SOCK_XR, H - 0.006, POST_HOLE_Z);
 /* hand-sized carry slots, two high two low at each end of both side panels */
 const SLOT_L = 0.12, SLOT_H = 0.034, SLOT_INSET = 0.055;
 /* cable exits for the fridge: round holes in the right-hand side at fridge-bay
@@ -679,8 +686,8 @@ dividerPanel('carcass_divider_right', 1);
 }
 /* the van-side panel closes the left bay full height; the middle bay is open
    front and back so gear can pass through from the cab side. On the right it
-   closes only above the fridge bay — the fridge is dual access, so its bay is
-   open at both ends and the drawer can run out either way. */
+   closes only above the fridge bay: the drawer runs out off the tailgate only,
+   but its cab end is left open so the fridge can be lifted out from inside the van. */
 box('carcass_front_panel_left', bayW, H - T, T, -(bayW + T), T + (H - T) / 2, -D / 2 + T / 2, M.ply_dark, carcass);
 const FRIDGE_BAY_TOP = 0.416;   /* underside of the shelf over drawer 4 */
 box('carcass_front_panel_right', bayW, H - FRIDGE_BAY_TOP, T, (bayW + T),
@@ -701,19 +708,9 @@ const POST_HOLE_R = 0.030;
   const sh = new THREE.Shape();
   sh.moveTo(-w / 2, -d / 2); sh.lineTo(w / 2, -d / 2); sh.lineTo(w / 2, d / 2);
   sh.lineTo(-w / 2, d / 2); sh.closePath();
-  const hole = new THREE.Path();
-  hole.absarc(0, -POST_HOLE_Z, POST_HOLE_R, 0, Math.PI * 2, true);
-  sh.holes.push(hole);
-  const hole2 = new THREE.Path();
-  hole2.absarc(0, -POST_HOLE_Z2, POST_HOLE_R, 0, Math.PI * 2, true);
-  sh.holes.push(hole2);
   const geo = new THREE.ExtrudeGeometry(sh, { depth: T, bevelEnabled: false });
   geo.rotateX(-Math.PI / 2); geo.translate(0, -T / 2, 0);
   const p = new THREE.Mesh(geo, M.ply_dark); p.name = 'top_panel'; topPanel.add(p);
-  const lin = new THREE.Mesh(new THREE.CylinderGeometry(POST_HOLE_R, POST_HOLE_R, T + 0.004, 24, 1, true), M.steel);
-  lin.name = 'top_panel_post_liner'; lin.position.set(0, 0, POST_HOLE_Z); topPanel.add(lin);
-  const lin2 = new THREE.Mesh(new THREE.CylinderGeometry(POST_HOLE_R, POST_HOLE_R, T + 0.004, 24, 1, true), M.steel);
-  lin2.name = 'top_panel_post_liner_centre'; lin2.position.set(0, 0, POST_HOLE_Z2); topPanel.add(lin2);
 }
 box('top_panel_finger_slot', 0.09, 0.008, 0.022, 0, T / 2 - 0.003, D / 2 - 0.07, M.stove, topPanel);
 /* no rear rail over the drawer bays — the drawer fronts close the face there, and a
@@ -885,9 +882,21 @@ function drawer(name, cx, out, kitchen) {
     const bk = pillPlate(name + '_back', dW - 2 * T, dh, T, 0.16, 0.05, 0, dh - 0.055, M.ply, g);
     bk.position.set(0, 0, -dD / 2);
   } else {
-    box(name + '_side_left',  T, dh, dD, -dW / 2 + T / 2, y, 0, M.ply, g);
-    box(name + '_side_right', T, dh, dD,  dW / 2 - T / 2, y, 0, M.ply, g);
-    box(name + '_back', dW - 2 * T, dh, T, 0, y, -dD / 2 + T / 2, M.ply, g);
+    /* the fridge drawer's sides stand only 150 mm, so the fridge is easy to reach */
+    const sh = name === 'drawer_right_lower' ? 0.15 : dh, sy = sh / 2;
+    box(name + '_side_left',  T, sh, dD, -dW / 2 + T / 2, sy, 0, M.ply, g);
+    box(name + '_side_right', T, sh, dD,  dW / 2 - T / 2, sy, 0, M.ply, g);
+    if (name !== 'drawer_right_lower') box(name + '_back', dW - 2 * T, sh, T, 0, sy, -dD / 2 + T / 2, M.ply, g);
+    else {
+      /* the fridge drawer's back is loose: it drops into a pair of vertical channels,
+         one on each side wall, so it lifts out to get the fridge out from the cab end */
+      const bz = -dD / 2 + 0.008 + 0.004 + T / 2, cw = 0.008;
+      for (const [side, sx] of [['left', -1], ['right', 1]])
+        for (const [tag, dz] of [['outer', -1], ['inner', 1]])
+          box(name + '_back_channel_' + side + '_' + tag, cw, sh, cw,
+              sx * (dW / 2 - T - cw / 2), sy, bz + dz * (T / 2 + 0.001 + cw / 2), M.ply_dark, g);
+      box(name + '_back', dW - 2 * T - 0.004, sh, T, 0, sy, bz, M.ply, g);
+    }
   }
   /* each front sits inside its carcass opening with a 3 mm shadow gap all round —
      openings in carcass coords, [bottom, top], between floor / shelf / top deck */
@@ -926,10 +935,17 @@ function drawer(name, cx, out, kitchen) {
   /* --- drawer 4: slide-out compressor fridge with a top-opening lid --- */
   let fridgeLid = null;
   if (name === 'drawer_right_lower') {
-    const fw = dW - 2 * T - 0.006, fd = 0.48, fhh = 0.33;
+    const WW = 0.02;   /* wheel width — the body is narrowed so the wheels fit beside it inside the drawer */
+    const fw = dW - 2 * T - 0.006 - 2 * (WW + 0.002), fd = 0.48, fhh = 0.33;
     /* centred in the drawer: dual access, so it has to clear the carcass whichever way it runs out */
     const fz = 0;
-    box(name + '_fridge_body', fw, fhh, fd, 0, T + fhh / 2, fz, M.trim, g);
+    /* four black wheels on the long sides, two each side near the corners; the body rides just clear of the base */
+    const WR = 0.035, WH = 0.008;
+    box(name + '_fridge_body', fw, fhh - WH, fd, 0, T + WH + (fhh - WH) / 2, fz, M.trim, g);
+    const wheelMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.8, metalness: 0.05 });
+    for (const [tx, sx] of [['l', -1], ['r', 1]])
+      for (const [tz, sz] of [['fore', -1], ['aft', 1]])
+        tube(name + '_fridge_wheel_' + tx + '_' + tz, WR, WW, sx * (fw / 2 + 0.001 + WW / 2), T + WR, fz + sz * (fd / 2 - WR - 0.015), wheelMat, g, 'x');
     box(name + '_fridge_liner', fw - 0.06, fhh - 0.05, fd - 0.08, 0, T + fhh / 2 + 0.03, fz, M.cushion, g);
     box(name + '_fridge_panel', 0.16, 0.06, 0.014, -0.09, T + 0.24, fz + fd / 2 + 0.004, M.stove, g);
     for (const dx of [-0.03, 0.03]) {
@@ -946,18 +962,7 @@ function drawer(name, cx, out, kitchen) {
     box(name + '_lid', fw, 0.026, fd, fw / 2, 0.013, 0, M.cushion, fridgeLid);
     box(name + '_lid_seal', fw - 0.03, 0.008, fd - 0.03, fw / 2, -0.004, 0, M.stove, fridgeLid);
     box(name + '_lid_catch', 0.03, 0.03, 0.10, fw - 0.02, 0.02, 0, M.steel, fridgeLid);
-    /* dual access: a second front at the cab end, latched the same way, so the
-       drawer reads finished whichever face is showing */
     engrave(name + '_engraving', Math.min(fh - 0.03 - (DS_TOP + DS_H + 0.01), 0.26), frontPivot, -(fh + DS_TOP + DS_H) / 2, 0.0125);
-    const forePivot = new THREE.Group(); forePivot.name = name + '_fore_front_hinge';
-    forePivot.position.set(0, fTop, -D / 2 + 0.011 - 0.002); forePivot.rotation.y = Math.PI; g.add(forePivot);
-    slottedFront(name + '_fore_front', fW, fh, 0.022, M.badge, forePivot);
-    for (const sx of [-1, 1]) {
-      const side2 = sx < 0 ? 'left' : 'right';
-      box(name + '_fore_latch_' + side2, 0.052, 0.036, 0.016, sx * (bayW / 2 - 0.03), -fh + 0.026, -0.019, M.latch, forePivot);
-      tube(name + '_fore_latch_lever_' + side2, 0.009, 0.036, sx * (bayW / 2 - 0.03), -fh + 0.026, -0.030, M.latch, forePivot);
-    }
-    engrave(name + '_fore_engraving', Math.min(fh - 0.03 - (DS_TOP + DS_H + 0.01), 0.26), forePivot, -(fh + DS_TOP + DS_H) / 2, 0.0125);
   }
   model.add(g);
   if (name === 'drawer_right_upper') {
@@ -982,10 +987,23 @@ function drawer(name, cx, out, kitchen) {
     }
     box(name + '_lid_ledge_left',  0.012, 0.010, dD - 2 * T, -dW / 2 + T + 0.006, lidY - lt / 2 - 0.005, 0, M.ply_dark, g);
     box(name + '_lid_ledge_right', 0.012, 0.010, dD - 2 * T,  dW / 2 - T - 0.006, lidY - lt / 2 - 0.005, 0, M.ply_dark, g);
-    /* what the lids cover: a shallow bin of odds and ends */
-    box(name + '_tray_divider', T * 0.7, 0.07, dD - 2 * T, -0.05, 0.035 + T, 0, M.ply_dark, g);
-    for (const [dx, col] of [[-0.10, M.cushion], [-0.03, M.latch], [0.06, M.trim_dk]]) {
-      tube(name + '_pot_' + (dx < 0 ? 'a' : 'b') + Math.round(Math.abs(dx) * 100), 0.026, 0.07, dx, 0.05, 0.10, col, g, 'y');
+    /* under the lids: two loose cross dividers, each dropped between a pair of
+       cleats on the side walls, and three mugs stood in the middle compartment */
+    const iW3 = dW - 2 * T, dvH = 0.07, dvT = T * 0.7;
+    for (const [tag, dz] of [['fore', -0.105], ['aft', 0.105]]) {
+      box(name + '_divider_' + tag, iW3 - 0.004, dvH, dvT, 0, T + dvH / 2, dz, M.ply_dark, g);
+      for (const sx of [-1, 1]) for (const sz of [-1, 1])
+        box(name + '_divider_' + tag + '_cleat_' + (sx < 0 ? 'l' : 'r') + (sz < 0 ? 'a' : 'b'), 0.008, dvH, 0.008,
+            sx * (iW3 / 2 - 0.004), T + dvH / 2, dz + sz * (dvT / 2 + 0.005), M.ply, g);
+    }
+    const MUG_R = 0.037, MUG_H = 0.085;
+    for (const [i, mx, mat] of [[0, -0.105, M.latch], [1, -0.005, M.cushion], [2, 0.095, M.worktop]]) {
+      tube(name + '_mug_' + (i + 1), MUG_R, MUG_H, mx - 0.01, T + MUG_H / 2, 0, mat, g, 'y');
+      const hd = new THREE.Mesh(new THREE.TorusGeometry(0.014, 0.006, 8, 16, Math.PI), mat);
+      hd.name = name + '_mug_' + (i + 1) + '_handle';
+      hd.rotation.z = -Math.PI / 2;
+      hd.position.set(mx - 0.01 + MUG_R, T + MUG_H / 2 + 0.005, 0);
+      g.add(hd);
     }
     box(name + '_tray_stop', dW - 2 * T, 0.02, T, 0, dh - 0.01, -dD / 2 + T, M.ply_dark, g);
     return { g, frontPivot, fridgeLid, lids };
@@ -1020,7 +1038,7 @@ function drawer(name, cx, out, kitchen) {
     return { g, frontPivot, fridgeLid, crossDivider, crossDivider2, cdSlots: slotZ, cdLift: cdH * 1.05 };
   }
   if (!kitchen) {
-    box(name + '_tray_divider', T * 0.7, dh - 0.06, dD - 2 * T, -0.06, (dh - 0.06) / 2 + T, 0, M.ply_dark, g);
+    if (name !== 'drawer_right_lower') box(name + '_tray_divider', T * 0.7, dh - 0.06, dD - 2 * T, -0.06, (dh - 0.06) / 2 + T, 0, M.ply_dark, g);
     return { g, frontPivot, fridgeLid };
   }
 
@@ -1054,6 +1072,25 @@ function drawer(name, cx, out, kitchen) {
   box(name + '_side_tray_end', 0.010, stH, stD, -(iW - 0.014) / 2, stY, stzC, M.ply, sideTray);
   box(name + '_side_tray_pull', 0.010, 0.022, 0.09, (iW - 0.014) / 2 + 0.010, stY, stzC, M.latch, sideTray);
   const sideTravel = iW - 0.06;
+  /* two loose dividers running the length of the tray, splitting it into thirds.
+     Each drops between short cleats on the end wall and the face; to lift one out
+     its outer end tips up first, then it draws out along its own length */
+  const SD_T = 0.010, SD_H = stH - 0.016;
+  const sdX0 = -(iW - 0.014) / 2 + 0.005 + 0.0015, sdX1 = (iW - 0.014) / 2 - 0.007 - 0.0015, SD_L = sdX1 - sdX0;
+  const sideDiv = [];
+  for (const [tag, dz] of [['a', -stD / 6], ['b', stD / 6]]) {
+    const zk = stzC + dz;
+    for (const [wtag, cx] of [['end', sdX0 + 0.004], ['face', sdX1 - 0.004]])
+      for (const sz of [-1, 1])
+        box(name + '_side_tray_cleat_' + tag + '_' + wtag + (sz < 0 ? '_1' : '_2'), 0.008, 0.04, 0.008,
+            cx, stY - stH / 2 + 0.005 + 0.02, zk + sz * (SD_T / 2 + 0.004), M.ply_dark, sideTray);
+    const v = new THREE.Group(); v.name = name + '_side_tray_divider_' + tag;
+    v.position.set(sdX0, stY - stH / 2 + 0.005, zk); sideTray.add(v);
+    box(name + '_side_tray_divider_' + tag + '_board', SD_L, SD_H, SD_T, SD_L / 2, SD_H / 2, 0, M.ply, v);
+    box(name + '_side_tray_divider_' + tag + '_grip', 0.07, 0.014, SD_T + 0.004, SD_L - 0.06, SD_H - 0.012, 0, M.latch, v);
+    v.userData = { x0: v.position.x, y0: v.position.y, slide: SD_L * 0.85 + 0.05 };
+    sideDiv.push(v);
+  }
 
   /* --- twin-burner stove --- */
   const sY = deckY + 0.015;
@@ -1077,21 +1114,56 @@ function drawer(name, cx, out, kitchen) {
   /* --- open storage behind the drawer front, above the side tray --- */
   tube(name + '_rolled_mat', 0.040, 0.20, 0.05, 0.100, 0.24, M.stove, g);
   box(name + '_gas_canister', 0.080, 0.080, 0.080, -0.095, 0.100, 0.10, M.steel, g);
-  return { g, frontPivot, shield, sideTray, sideTravel };
+  return { g, frontPivot, shield, sideTray, sideTravel, sideDiv };
 }
 const left = drawer('drawer_left_upper', -(bayW + T), 0, true);
 const leftDrawer = left.g, leftShield = left.shield;
-const leftSideTray = left.sideTray, leftSideTravel = left.sideTravel;
+const leftSideTray = left.sideTray, leftSideTravel = left.sideTravel, leftSideDiv = left.sideDiv || [];
 const d2 = drawer('drawer_left_lower', -(bayW + T), 0);
 const d2Div = d2.crossDivider, d2Div2 = d2.crossDivider2, d2Slots = d2.cdSlots || [], d2Lift = d2.cdLift || 0;
 const d3 = drawer('drawer_right_upper', (bayW + T), 0);
 const d3Lids = d3.lids || [];
+const d3Divs = ['fore', 'aft'].map(t => d3.g.getObjectByName('drawer_right_upper_divider_' + t)).filter(Boolean);
+for (const v of d3Divs) v.userData.y0 = v.position.y;
 const d4 = drawer('drawer_right_lower', (bayW + T), 0);
+/* the fridge and everything on it ride as one unit, so it can be rolled out of the
+   drawer's cab end once the loose back has been lifted out of its channels */
+const fridgeUnit = new THREE.Group(); fridgeUnit.name = 'drawer_right_lower_fridge_unit';
+d4.g.add(fridgeUnit);
+for (const o of [...d4.g.children]) {
+  if (o !== fridgeUnit && /_(fridge|basket)_|_fridge_lid$/.test(o.name)) fridgeUnit.add(o);
+}
+const fridgeBack = d4.g.getObjectByName('drawer_right_lower_back');
+const fridgeBackY0 = fridgeBack ? fridgeBack.position.y : 0, fridgeBackZ0 = fridgeBack ? fridgeBack.position.z : 0;
+const FRIDGE_ROLL = D / 2 + 0.24 + 0.03;          /* until its far end is clear of the carcass face */
+const FRIDGE_DROP = BAYS.drawer_right_lower[0] + T; /* down off the drawer base onto the van floor */
+/* two cans stood in the cab-end half of the fridge, clear of the basket */
+const CAN_R = 0.033, CAN_H = 0.115, CAN_Y0 = 0.075 + CAN_H / 2;
+const fridgeCans = [[-0.06, M.latch], [0.06, M.steel]].map(([cx, mat], i) => {
+  const c = tube('drawer_right_lower_fridge_can_' + (i ? 'b' : 'a'), CAN_R, CAN_H, cx, CAN_Y0, -0.12, mat, fridgeUnit, 'y');
+  c.userData.x0 = cx; c.userData.xF = cx * 1.6;
+  return c;
+});
+let fridgeLidP = 0;
+/* where the cans are set down: on the table top if a table is up, else on the floor.
+   Worked out in the fridge unit's own frame, so they land right wherever it is */
+const _tb = new THREE.Box3(), _tv = new THREE.Vector3();
+const shown = o => { for (; o; o = o.parent) if (!o.visible) return false; return true; };
+function canTarget(i) {
+  const tops = [];
+  model.traverse(o => { if (o.isMesh && /^(table_top_[ab]|leaf_table_centre_\w+)$/.test(o.name) && shown(o)) tops.push(o); });
+  if (!tops.length) return null;
+  _tb.makeEmpty(); for (const o of tops) _tb.expandByObject(o);
+  _tv.set((_tb.min.x + _tb.max.x) / 2 + (i ? 0.07 : -0.07), _tb.max.y, (_tb.min.z + _tb.max.z) / 2);
+  const v = fridgeUnit.worldToLocal(_tv.clone());
+  v.y += CAN_H / 2;
+  return v;
+}
 const drawerRefs = [
   { n: 1, g: leftDrawer, key: 'drawer_left_upper', hinge: left.frontPivot, tabletop: true },
   { n: 2, g: d2.g, key: 'drawer_left_lower', hinge: d2.frontPivot },
   { n: 3, g: d3.g, key: 'drawer_right_upper', hinge: d3.frontPivot },
-  { n: 4, g: d4.g, key: 'drawer_right_lower', hinge: d4.frontPivot, lid: d4.fridgeLid, tabletop: true, dir: 1 },
+  { n: 4, g: d4.g, key: 'drawer_right_lower', hinge: d4.frontPivot, lid: d4.fridgeLid, dir: 1 },
 ];
 
 /* ---- removable door across the middle bay: lifts out and goes back in as a shelf ---- */
@@ -1246,13 +1318,15 @@ function panel(name, len, zCenter, y, parent, plain) {
     /* only the outer rail on each panel — the facing edges interleave, so a rail
        there would foul the other panel's fingers */
     const isRear = name === 'bed_panel_rear', sz = isRear ? 1 : -1;
-    const rz = zCenter + sz * (len / 2 - 0.025), rn = name + '_rail_' + (isRear ? 'aft' : 'fore');
+    /* on the middle panel the rail stops at the perimeter bar's inner face, so the two never share a face */
+    const rInset = name === 'bed_panel_mid' ? 0.018 : 0, rD = 0.05 - rInset;
+    const rz = zCenter + sz * (len / 2 - rInset - rD / 2), rn = name + '_rail_' + (isRear ? 'aft' : 'fore');
     /* cut at the middle bay so nothing crosses the hatch opening */
     const rW = (bedW - bayW) / 2;
     for (const rx of [-1, 1]) {
-      box(rn + (rx < 0 ? '_left' : '_right'), rW, pT, 0.05, rx * (bayW + rW) / 2, y, rz, pm, g);
+      box(rn + (rx < 0 ? '_left' : '_right'), rW, pT, rD, rx * (bayW + rW) / 2, y, rz, pm, g);
     }
-    const rMid = box(rn + '_middle', bayW - 0.006, pT, 0.05, 0, y, rz, pm, g);
+    const rMid = box(rn + '_middle', bayW - 0.006, pT, rD, 0, y, rz, pm, g);
     (isRear ? hatchSlats : stackSlats).push(rMid);
     const sideW = (bedW - 0.02 - bayW) / 2;   /* kept for the rail cuts above */
     /* fingers reach past the panel's own edge so the two sets overlap when nested */
@@ -1268,12 +1342,12 @@ function panel(name, len, zCenter, y, parent, plain) {
       const x = -bedW / 2 + fw * (k + 0.5);
       const inBay = Math.abs(x) - fw / 2 < bayW / 2;   /* any slat touching the bay travels with the hatch */
       const sfx = Math.abs(x) < 1e-6 ? 'c' : (x < 0 ? 'l' : 'r');
-      /* the lounger post stands in one of two sockets on the bay centreline, so the
-         orange panel's centre finger is broken open at both of them */
-      const postGap = Math.abs(x) < POST_HOLE_R + sw / 2;
+      /* the bedside post stands in a socket over each drawer bay, so the orange
+         panel's finger over each socket is broken open there */
+      const postGap = [SOCK_XL, SOCK_XR].some(sx => Math.abs(x - sx) < POST_HOLE_R + sw / 2);
       if (isRear && postGap) {
         const clr = POST_HOLE_R + 0.006;
-        const cuts = [POST_HOLE_Z - hingeA, POST_HOLE_Z2 - hingeA].sort((p, q) => p - q);
+        const cuts = [POST_HOLE_Z - hingeA];
         let z0 = sz0 - sd / 2;
         const ends = [];
         for (const cz of cuts) { ends.push([z0, cz - clr]); z0 = cz + clr; }
@@ -1282,9 +1356,10 @@ function panel(name, len, zCenter, y, parent, plain) {
         for (const [za, zb] of ends) {
           if (zb - za < 0.02) continue;
           si++;
-          const seg = box(name + '_slat_bay_' + (k + 1) + '_' + sfx + '_seg' + si,
+          const seg = box(name + '_slat_' + (inBay ? 'bay_' : 'side_') + (k + 1) + '_' + sfx + '_seg' + si,
                           sw, pT, zb - za, x, y, (za + zb) / 2, pmd, g);
-          hatchSlats.push(seg); rearFingers.push(seg);
+          if (inBay) hatchSlats.push(seg);
+          rearFingers.push(seg);
         }
         continue;
       }
@@ -1312,6 +1387,7 @@ function panel(name, len, zCenter, y, parent, plain) {
         for (let i = 0; i < n; i++) {
           const cx = -w / 2 + w * (i + 0.5) / n;
           if (Math.abs(cx) + r > w / 2 - 0.018) continue;
+          if ((bores || []).some(([bx]) => Math.abs(cx - bx) < r + POST_HOLE_R + 0.012)) continue;   /* keep slots clear of the post bore */
           const hp = new THREE.Path();
           hp.moveTo(cx - r, -sl / 2 + r);
           hp.absarc(cx, -sl / 2 + r, r, Math.PI, 0, true);
@@ -1320,9 +1396,9 @@ function panel(name, len, zCenter, y, parent, plain) {
           hp.closePath();
           sh.holes.push(hp);
         }
-        for (const bz of (bores || [])) {   /* clearance for the lounger table post */
+        for (const [bx, bz] of (bores || [])) {   /* clearance for the bedside table post */
           const hp = new THREE.Path();
-          hp.absarc(0, -(bz - fz), POST_HOLE_R, 0, Math.PI * 2, true);
+          hp.absarc(bx, -(bz - fz), POST_HOLE_R, 0, Math.PI * 2, true);
           sh.holes.push(hp);
         }
         const geo = new THREE.ExtrudeGeometry(sh, { depth: pT, bevelEnabled: false });
@@ -1334,18 +1410,17 @@ function panel(name, len, zCenter, y, parent, plain) {
         return m;
       };
       for (const rx of [-1, 1]) {
-        rearFill.push(vent(name + '_infill_' + (rx < 0 ? 'left' : 'right'), sw2, fl,
-                           rx * (bayW / 2 + sw2 / 2)));
-      }
-      const bf = vent(name + '_infill_bay', bayW - 0.006, fl, 0, [POST_HOLE_Z - hingeA, POST_HOLE_Z2 - hingeA]);
-      rearFill.push(bf); rearFillBay.push(bf);
-      for (const [tag, bz] of [['cab', POST_HOLE_Z - hingeA], ['centre', POST_HOLE_Z2 - hingeA]]) {
+        const px = rx * (bayW / 2 + sw2 / 2);
+        rearFill.push(vent(name + '_infill_' + (rx < 0 ? 'left' : 'right'), sw2, fl, px,
+                           [[(rx < 0 ? SOCK_XL : SOCK_XR) - px, POST_HOLE_Z - hingeA]]));
         const lin = new THREE.Mesh(new THREE.CylinderGeometry(POST_HOLE_R, POST_HOLE_R, pT + 0.004, 24, 1, true), M.steel);
-        lin.name = name + '_post_liner_' + tag;
-        lin.position.set(0, y, bz);
+        lin.name = name + '_post_liner_' + (rx < 0 ? 'left' : 'right');
+        lin.position.set(rx < 0 ? SOCK_XL : SOCK_XR, y, POST_HOLE_Z - hingeA);
         g.add(lin);
-        rearFill.push(lin); rearFillBay.push(lin);
+        rearFill.push(lin);
       }
+      const bf = vent(name + '_infill_bay', bayW - 0.006, fl, 0);
+      rearFill.push(bf); rearFillBay.push(bf);
     }
     if (true) for (const rx of [-1, 1]) {   /* long-edge frame rails */
       box(name + '_frame_' + (rx < 0 ? 'left' : 'right'), fw, pT, len - 0.05,
@@ -1377,17 +1452,29 @@ function panel(name, len, zCenter, y, parent, plain) {
         0, y, zCenter + ez * (len / 2 - 0.011), pm, g);
   }
   }
+  /* the middle panel is edged with an 18 mm timber perimeter bar, flush with its faces.
+     Along the long sides it is fixed outside the panel edge, so the wing hinges move out
+     onto it; across the two ends — both hinge lines — it is let into the panel's own
+     length so the neighbouring panels still butt up to it */
+  const PBAR = name === 'bed_panel_mid' ? 0.018 : 0;
+  if (PBAR) {
+    const pbm = new THREE.MeshStandardMaterial({ color: 0x9a6a3c, roughness: 0.7, metalness: 0.02 });
+    for (const sx of [-1, 1])
+      box(name + '_perimeter_bar_' + (sx < 0 ? 'left' : 'right'), PBAR, pT + 0.002, len, sx * (bedW / 2 + PBAR / 2), y, zCenter, pbm, g);
+    for (const [tag, ez] of [['fore', -1], ['aft', 1]])
+      box(name + '_perimeter_bar_' + tag, bedW, pT + 0.002, PBAR, 0, y, zCenter + ez * (len / 2 - PBAR / 2), pbm, g);
+  }
   /* fold-out wings on the green and blue panels, taking the bed out to the van walls */
   for (const sx of (name === 'bed_panel_mid' || name === 'bed_panel_front') ? [-1, 1] : []) {
     const side = sx < 0 ? 'left' : 'right';
     const pv = new THREE.Group(); pv.name = name + '_flap_hinge_' + side;
-    pv.position.set(sx * bedW / 2, y, zCenter); g.add(pv);
+    pv.position.set(sx * (bedW / 2 + PBAR), y, zCenter); g.add(pv);
     const soft = name === 'bed_panel_front';   /* the pair nearest the cab */
     if (soft) {
       const fl = softPlate(name + '_flap_' + side, FLAP_W, len - 0.03, pT, 0.09, pm, pv);
       fl.position.set(sx * FLAP_W / 2, 0, 0); fl.scale.x = sx;
     } else {
-      box(name + '_flap_' + side, FLAP_W, pT, len - 0.03, sx * FLAP_W / 2, 0, 0, pm, pv);
+      box(name + '_flap_' + side, FLAP_W - PBAR, pT, len - 0.03, sx * (FLAP_W - PBAR) / 2, 0, 0, pm, pv);   /* narrowed by the bar, so the outer edge stays put */
     }
     /* infill cushion out to the van wall — posed from setFold so it never
        sweeps through the mattress when the flap folds up */
@@ -1662,7 +1749,7 @@ const AFT_END = D / 2;   /* pads run right out to the box's aft face */
 /* only the centre pad has to clear the table post — the two outer pads run the
    full length forward to meet the middle pad, so there is no gap fore to aft.
    The +0.03 restores what the pad geometry insets at each end. */
-const PAD_JOINT = SPLIT_Z - 0.030;   /* aft pads meet the middle pad just fore of the post; the hatch pad's bored hole takes the post */
+const PAD_JOINT = SPLIT_Z - 0.070;   /* far enough fore that the outer aft pads' post bores sit wholly inside them */ //   /* aft pads meet the middle pad just fore of the post; the hatch pad's bored hole takes the post */
 const SIDE_LEN = AFT_END - PAD_JOINT;
 const REAR_LEN = SIDE_LEN;   /* the hatch pad runs the same length — the bored hole clears the post */
 const MID_LEN = PAD_JOINT - (hingeA - pL);
@@ -1677,10 +1764,22 @@ const cushionSpec = [
   { tag: 'mid',    layer: 1, w: bedW, x: 0, len: MID_LEN, z: MID_Z,     zStack: zs(MID_LEN) },
   { tag: 'front',  layer: 2, w: bedW, x: 0, len: pL, z: hingeA - pL * 1.5, zStack: zs(pL) },
 ];
+/* the two outer aft pads are bored for the bedside post over each socket */
+function boredPad(w, d, hx, hz) {
+  const sh = new THREE.Shape();
+  sh.moveTo(-w / 2, -d / 2); sh.lineTo(w / 2, -d / 2); sh.lineTo(w / 2, d / 2); sh.lineTo(-w / 2, d / 2); sh.closePath();
+  const hp = new THREE.Path(); hp.absarc(hx, -hz, POST_HOLE_R + 0.004, 0, Math.PI * 2, true); sh.holes.push(hp);
+  const geo = new THREE.ExtrudeGeometry(sh, { depth: cT, bevelEnabled: false, curveSegments: 20 });
+  geo.rotateX(-Math.PI / 2); geo.translate(0, -cT / 2, 0);
+  return geo;
+}
 const cushions = cushionSpec.map(s => {
+  const bore = s.tag === 'rear_a' || s.tag === 'rear_c';
   const c = new THREE.Mesh(
-    new THREE.BoxGeometry(s.w - PAD_GAP, cT, s.len - PAD_GAP),
-    [M.cushion_edge, M.cushion_edge, M.cushion_face, M.cushion_face, M.cushion_edge, M.cushion_edge]);
+    bore ? boredPad(s.w - PAD_GAP, s.len - PAD_GAP, (s.x < 0 ? SOCK_XL : SOCK_XR) - s.x, POST_HOLE_Z - s.z)
+         : new THREE.BoxGeometry(s.w - PAD_GAP, cT, s.len - PAD_GAP),
+    bore ? [M.cushion_face, M.cushion_edge]
+         : [M.cushion_edge, M.cushion_edge, M.cushion_face, M.cushion_face, M.cushion_edge, M.cushion_edge]);
   c.name = 'cushion_' + s.tag;
   c.position.set(s.x, CUSHION_Y + (s.dy || 0), s.z);
   bed.add(c);
@@ -2101,7 +2200,7 @@ function setOut(ref, out) {
     r.position.z = BOXZ + RUN_Z + (out / 2) * dir;
   }
   const open = Math.min(1, Math.max(0, (out / OPEN - 0.5) / 0.5));
-  /* on the top two drawers the front folds out flat and becomes a side table */
+  /* on drawer 1 the front folds out flat and becomes a side table */
   if (ref.tabletop && ref.hinge) ref.hinge.rotation.x = -Math.PI / 2 * open;
   /* the fridge lid lifts once the drawer is out */
 
@@ -2121,13 +2220,48 @@ function setSeatBacks(f) {
 let fitReady = false;
 let boxRemoved = () => false;
 const anim = {
-  d1: { p: 0, target: 0, ms: 1500, apply: p => { setOut(drawerRefs[0], ease(p) * OPEN); dollyWithDrawer(p); } },
+  d1: { p: 0, target: 0, ms: 1500, gate: () => anim.d1.target === 1 || anim.d1s.p === 0, apply: p => { setOut(drawerRefs[0], ease(p) * OPEN); dollyWithDrawer(p); } },
   d2: { p: 0, target: 0, ms: 900, apply: p => setOut(drawerRefs[1], ease(p) * OPEN) },
-  d3: { p: 0, target: 0, ms: 900, apply: p => setOut(drawerRefs[2], ease(p) * OPEN) },
-  d4: { p: 0, target: 0, ms: 900, apply: p => setOut(drawerRefs[3], ease(p) * OPEN) },
+  d3: { p: 0, target: 0, ms: 900, gate: () => anim.d3.target === 1 || (anim.d3l.p === 0 && (anim.d3d.p === 0 || anim.d3d.p === 1)), apply: p => setOut(drawerRefs[2], ease(p) * OPEN) },
+  d4: { p: 0, target: 0, ms: 900, gate: () => anim.d4.target === 0 || anim.fridge.p === 0, apply: p => setOut(drawerRefs[3], ease(p) * OPEN) },
+  /* removing the fridge: the drawer's back lifts up out of its channels, then the
+     fridge rolls out of the cab end and steps down onto the floor */
+  /* ...then the lid opens and two cans are lifted out and stood on the floor */
+  fridge: { p: 0, target: 0, ms: 7600, gate: () => anim.d4.p === 0, apply: p => {
+    const a = ease(clamp01(p / 0.14)), b = ease(clamp01((p - 0.16) / 0.26)), c = ease(clamp01((p - 0.42) / 0.07));
+    fridgeLidP = ease(clamp01((p - 0.52) / 0.1));
+    fridgeCans.forEach((can, i) => {
+      const q = clamp01((p - 0.64 - i * 0.18) / 0.18);
+      const up = ease(clamp01(q / 0.4)), over = ease(clamp01((q - 0.4) / 0.6));
+      const yTop = T + 0.33 + CAN_H / 2 + 0.05;
+      const tg = over > 0 ? canTarget(i) : null;
+      const tx = tg ? tg.x : can.userData.xF, ty = tg ? tg.y : T + CAN_H / 2, tz = tg ? tg.z : -0.38;
+      can.position.y = CAN_Y0 + (yTop - CAN_Y0) * up + (ty - yTop) * over + 0.12 * Math.sin(Math.PI * over);
+      can.position.z = -0.12 + (tz + 0.12) * over;
+      can.position.x = can.userData.x0 + (tx - can.userData.x0) * over;
+    });
+    if (fridgeBack) {
+      fridgeBack.position.y = fridgeBackY0 + 0.24 * a;
+      fridgeBack.position.z = fridgeBackZ0 - 0.06 * clamp01((a - 0.7) / 0.3);
+    }
+    fridgeUnit.position.z = -FRIDGE_ROLL * b;
+    fridgeUnit.position.y = -FRIDGE_DROP * c;
+  } },
   d5: { p: 0, target: 0, ms: 1600, apply: p => setDoor(ease(p)) },
   d5h: { p: 0, target: 0, ms: 1100, apply: p => setShelfHigh(ease(p)) },
-  d1s: { p: 0, target: 0, ms: 800, apply: p => { if (leftSideTray) leftSideTray.position.x = ease(p) * leftSideTravel; } },
+  /* the tray's dividers, in one run: each in turn tips up at its outer end, draws
+     out along its length, pauses clear of the tray, then goes back the same way */
+  d1v: { p: 0, target: 0, ms: 6000, apply: p => {
+    leftSideDiv.forEach((v, i) => {
+      const q = clamp01((p - i * 0.5) / 0.5);
+      const r = q < 0.42 ? q / 0.42 : q < 0.58 ? 1 : (1 - q) / 0.42;
+      const th = 0.55 * ease(clamp01(r / 0.35)), sl = v.userData.slide * ease(clamp01((r - 0.35) / 0.65));
+      v.rotation.z = th;
+      v.position.x = v.userData.x0 + sl * Math.cos(th);
+      v.position.y = v.userData.y0 + sl * Math.sin(th);
+    });
+  } },
+  d1s: { p: 0, target: 0, ms: 800, gate: () => anim.d1s.target === 1 || anim.d1v.p === 0 || anim.d1v.p === 1, apply: p => { if (leftSideTray) leftSideTray.position.x = ease(p) * leftSideTravel; } },
   /* the cross divider lifts clear of its cleats and drops into the next slot,
      twice over, so all three positions are shown */
   strap: { p: 0, target: 0, ms: 2800, apply: p => setStrap(p) },
@@ -2145,16 +2279,37 @@ const anim = {
     hop(d2Div, d2Slots[0], d2Slots[2], q1);
     hop(d2Div2, d2Slots[1], d2Slots[0], q2);
   } },
-  d3l: { p: 0, target: 0, ms: 2000, apply: p => {
-    /* each lid in turn: lift clear, roll over to show the trivet bars, then
-       settle back onto the drawer top the other way up. The fore lid swings aft
-       on the way — straight up would bury it in the stowed mattress. */
+  d3l: { p: 0, target: 0, ms: 3200, gate: () => anim.d3l.target === 1 || anim.d3d.p === 0 || anim.d3d.p === 1, apply: p => {
+    /* each chopping board in turn: lift clear of the drawer, roll over to show the
+       trivet bars, then carried out past the drawer front and laid flat on the ground
+       behind the van, one on the other —
+       leaving the dividers and mugs in view. The model is lifted onto the van floor,
+       so the ground sits at -model.position.y in its own frame. */
     d3Lids.forEach((pv, i) => {
-      const a = Math.min(1, Math.max(0, (p - i * 0.5) / 0.5));
-      const e = ease(a), arc = Math.sin(Math.PI * e);
-      pv.position.y = pv.userData.y0 + (i === 0 ? 0.20 : 0.22) * arc;
-      pv.position.z = pv.userData.z0 + (i === 0 ? 0 : 0.30) * arc;
-      pv.rotation.z = Math.PI * e;
+      /* both boards come back off the ground once the dividers have been shown — top one first */
+      const back = i === 1 ? clamp01(anim.d3b.p / 0.5) : clamp01((anim.d3b.p - 0.5) / 0.5);
+      const a = clamp01((p - i * 0.5) / 0.5) * (1 - back);
+      const up = ease(clamp01(a / 0.3)), go = ease(clamp01((a - 0.3) / 0.7));
+      /* they fly straight up clear of the drawer and hang there, one above the other */
+      const tg = { x: 0, y: pv.userData.y0 + 0.42 + i * 0.08, z: pv.userData.z0 + (i === 1 ? 0.30 : 0.16) };
+      const y1 = pv.userData.y0 + 0.16, z1 = pv.userData.z0 + (i === 1 ? 0.26 : 0.12);
+      pv.position.x = tg.x * go;
+      pv.position.y = pv.userData.y0 + (y1 - pv.userData.y0) * up + (tg.y - y1) * go;
+      pv.position.z = pv.userData.z0 + (z1 - pv.userData.z0) * up + (tg.z - z1) * go;
+      pv.rotation.z = Math.PI * ease(clamp01((a - 0.2) / 0.35));
+    });
+  } },
+  /* last, both boards go back onto the drawer, top one first — each lifted off the
+     stack, turned back over and set down in its own place */
+  d3b: { p: 0, target: 0, ms: 3200, apply: () => anim.d3l.apply(anim.d3l.p) },
+  /* then the two dividers, one at a time: each lifts straight up out of its cleats,
+     is held clear for a moment, and drops back in */
+  d3d: { p: 0, target: 0, ms: 3200, gate: () => anim.d3d.target === 1 || anim.d3l.p === 1, apply: p => {
+    d3Divs.forEach((v, i) => {
+      const q = clamp01((p - i * 0.5) / 0.5);
+      const r = q < 0.4 ? q / 0.4 : q < 0.6 ? 1 : (1 - q) / 0.4;
+      v.position.y = v.userData.y0 + 0.16 * ease(r);
+      for (const c of v.userData.cleats || []) c.visible = true;
     });
   } },
   leaf: { p: 0, target: 0, ms: 1100, apply: p => setHalfBOut(ease(p)) },
@@ -2191,6 +2346,13 @@ anim.fleaf.gate = () => anim.fleaf.target === 1 || anim.tstow.p < 0.001;
 anim.seats.gate = () => anim.seats.target === 1 || anim.bed.p === 1;
 /* the backrest can only rise once the bed is flat and down */
 anim.recline.gate = () => anim.recline.target === 0 || anim.bed.p === 0;
+const fridgeBtn = document.getElementById('fridge-remove');
+function refreshFridgeBtn() { if (fridgeBtn) fridgeBtn.textContent = anim.fridge.target === 1 ? 'Refit fridge' : 'Remove fridge'; }
+if (fridgeBtn) fridgeBtn.addEventListener('click', () => {
+  anim.d4.target = 0;   /* the drawer shuts first, then the fridge comes out the cab end */
+  anim.fridge.target = anim.fridge.target === 1 ? 0 : 1;
+  refreshFridgeBtn();
+});
 let last = performance.now();
 const FLAP_DELAY = 4000;
 let bedPrevTarget = anim.bed.target, flapsAt = null;
@@ -2519,18 +2681,32 @@ function tick(now) {
   }
   /* the lower side tray only runs out once drawer 1 is fully extended */
   anim.d1s.target = (anim.d1.target === 1 && anim.d1.p > 0.999 && !trayClosing) ? 1 : 0;
+  /* and its divider only lifts out once the tray is fully out */
+  if (anim.d1s.target === 1) { if (anim.d1s.p > 0.999) anim.d1v.target = 1; }
+  else if (anim.d1v.p === 1) { anim.d1v.p = 0; anim.d1v.target = 0; }   /* the run ends with it home — re-arm it */
+  else anim.d1v.target = 0;
   /* the divider only comes out once drawer 2 is fully extended */
   anim.d2d.target = (anim.d2.target === 1 && anim.d2.p > 0.999 && !divClosing) ? 1 : 0;
   /* the shelf shows both heights: it seats low, then lifts to the upper supports */
   anim.d5h.target = (anim.d5.target === 1 && anim.d5.p > 0.999 && !shelfLowering) ? 1 : 0;
   /* the lids only come off once drawer 3 is fully extended */
   anim.d3l.target = (anim.d3.target === 1 && anim.d3.p > 0.999 && !lidsClosing) ? 1 : 0;
+  /* the dividers come out and go back once the boards are off */
+  if (anim.d3l.target === 1) { if (anim.d3l.p > 0.999) anim.d3d.target = 1; }
+  else if (anim.d3d.p === 1) { anim.d3d.p = 0; anim.d3d.target = 0; }
+  else anim.d3d.target = 0;
+  /* once back on, the boards stay put on closing; the flag is cleared when the
+     board run is wound back, ready for the next opening */
+  if (anim.d3l.target === 1) { if (anim.d3d.p === 1) anim.d3b.target = 1; }
+  else if (anim.d3b.p === 1) { anim.d3l.p = 0; anim.d3b.p = 0; anim.d3b.target = 0; anim.d3l.apply(0); }
+  else if (anim.d3l.p === 0) { anim.d3b.p = 0; anim.d3b.target = 0; }
+  else anim.d3b.target = anim.d3b.p;
   /* the fridge lid only lifts when drawer 4 is out on its own */
   const d4ref = drawerRefs[3];
   if (d4ref.lid) {
     const p = anim.d4.p;
     const open = Math.min(1, Math.max(0, (p - 0.5) / 0.5));
-    d4ref.lid.rotation.z = allOpen() ? 0 : 1.45 * open;
+    d4ref.lid.rotation.z = Math.max(allOpen() ? 0 : 1.45 * open, 1.45 * fridgeLidP);
   }
   if (moved) updateVisBox();
   if (anyDrawerOpen() && !userOrbiting) holdRearView(dt);
@@ -2544,6 +2720,7 @@ for (const d of drawerRefs) anim['d' + d.n].apply(0);
 for (const pv of d3Lids) { pv.userData.y0 = pv.position.y; pv.userData.z0 = pv.position.z; }
 for (const g of [d2Div, d2Div2]) if (g) g.userData.y0 = g.position.y;
 anim.d1s.apply(0);
+anim.d1v.apply(0);
 anim.d2d.apply(0);
 anim.d3l.apply(0);
 applyBedTiming();
@@ -2657,7 +2834,7 @@ function runDrawerSequence() {
   /* with the bed folded away and at least two seats out, there is room to stand
      in the load bay — so the run also shows the fridge coming out the cab end */
   const seatsRemoved = Object.values(seatGroups).filter(g => g && !g.visible).length;
-  const showInsideFridge = anim.bed.target === 1 && seatsRemoved >= 2;
+  const showInsideFridge = false;   /* the fridge now only runs out off the tailgate */
   /* the hatch panel goes back in too, so the run starts from a complete box */
   if (hatchOut) { hatchOut = false; applyHatch(); labels(); }
   /* the middle-bay panel goes back in first, so the run always starts from a
@@ -2672,9 +2849,9 @@ function runDrawerSequence() {
     const at = t;
     seqTimers.push(setTimeout(() => { a.target = 1; }, at));
     /* drawer 1 waits for its side tray to run out, be seen, and go back in */
-    const extra = d.n === 1 ? anim.d1s.ms * 2 + 900
+    const extra = d.n === 1 ? anim.d1s.ms * 2 + anim.d1v.ms + 900
                 : d.n === 2 ? anim.d2d.ms * 2 + 900
-                : d.n === 3 ? anim.d3l.ms * 2 + 900
+                : d.n === 3 ? anim.d3l.ms * 2 + anim.d3d.ms + anim.d3b.ms + 900
                 : d.n === 5 ? anim.d5h.ms * 2 + 1200 : 0;
     if (d.n === 1) {
       seqTimers.push(setTimeout(() => { trayClosing = false; }, at));
@@ -2977,9 +3154,8 @@ function applyTableMode() {
   const full = anim.bed.target === 0 || lounger;
   setTableStowed(mainStowed, bedside);
   anim.bside.target = bedside ? 1 : 0;   /* the lounger table comes out with the lounger */
-  /* both sockets get shown: it lands at the cab end, then moves to the centre one —
-     but with the hatch panel fitted it stays in the cab-end socket */
-  anim.bspos.target = (bedside && anim.bside.p > 0.999 && hatchOut) ? 1 : 0;
+  /* both sockets get shown: it lands in the left one, then moves across to the right */
+  anim.bspos.target = (bedside && anim.bside.p > 0.999) ? 1 : 0;
   if (full) anim.leaf.target = 0;
   /* the leaves fold on their own button, and always as the table goes away */
   anim.fleaf.target = (leafMode && (mainStowed || leafFolded)) ? 1 : 0;
@@ -3187,10 +3363,6 @@ const frontMeshes = drawerRefs.map(d => {
 }).filter(Boolean);
 /* the fridge's cab-end front is a front in its own right: hovering it runs the
    drawer out into the van instead of off the tailgate */
-{
-  const m = drawerRefs[3].g.getObjectByName('drawer_right_lower_fore_front');
-  if (m) { m.userData.drawerN = 4; m.userData.peekDir = -1; frontMeshes.push(m); }
-}
 /* the door across the hatch opening behaves the same way — clicking it opens it */
 {
   const m = doorBoard.getObjectByName('mid_door_board');
@@ -3222,7 +3394,7 @@ function peekDrawer(n, dir) {
   const a = anim['d' + n];
   a.target = 1;
   if (drawerBtn) drawerBtn.textContent = 'Close drawers';
-  hoverTimer = setTimeout(closePeek, 3000);   /* and it shuts itself after three seconds */
+  /* it stays out until its front is clicked again */
 }
 function pickFront(e) {
   const r = stage._renderer, cam = stage._camera;
@@ -3230,8 +3402,12 @@ function pickFront(e) {
   const b = r.domElement.getBoundingClientRect();
   hoverPt.set(((e.clientX - b.left) / b.width) * 2 - 1, -((e.clientY - b.top) / b.height) * 2 + 1);
   hoverRay.setFromCamera(hoverPt, cam);
-  return hoverRay.intersectObjects(frontMeshes, false)[0] || null;
+  /* once the fridge is out on the floor, the fridge itself is clickable too */
+  const fridgeOut = anim.fridge.target === 1 && anim.fridge.p === 1;
+  return hoverRay.intersectObjects(fridgeOut ? frontMeshes.concat(fridgeClickMeshes) : frontMeshes, false)[0] || null;
 }
+const fridgeClickMeshes = [];
+fridgeUnit.traverse(o => { if (o.isMesh && !fridgeCans.includes(o)) { o.userData.fridgeRefit = true; fridgeClickMeshes.push(o); } });
 function onStageMove(e) {
   const r = stage._renderer;
   if (!r) return;
@@ -3241,6 +3417,9 @@ function onStageMove(e) {
 function onStageClick(e) {
   const hit = pickFront(e);
   if (!hit) return;
+  if (hit.object.userData.fridgeRefit) {   /* clicking the fridge on the floor puts it back */
+    anim.fridge.target = 0; refreshFridgeBtn(); return;
+  }
   const n = hit.object.userData.drawerN;
   if (!n) return;
   const dir = hit.object.userData.peekDir || 1;

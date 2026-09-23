@@ -81,7 +81,8 @@
   <section class="group">
     <h2>Parts list</h2>
     <table class="table" id="parts"></table>
-  <p class="note">The middle-bay hatch panel takes a 60 mm bored hole on the centreline, 245 mm forward of the bay centre, on the rear/mid bed-panel joint — the bedside post drops through it so the table can be fitted with the hatch in place. Line the hole with a steel rim.</p>
+  <p class="note">The bedside table has two sockets: 160 mm steel foot plates let in flush with the top deck, one over each drawer bay (left socket 304 mm left of the centreline, right socket 484 mm right of it), 100 mm aft of the cab-end face. The aft bed panel carries a 60 mm bore over each socket so the 264 mm post drops through to its plate; the hatch panel and middle-bay top panel no longer have post holes.</p>
+  <p class="note">The middle bed panel (C2) is edged with an 18 × 16 mm timber perimeter bar, flush with its faces: two side lengths fixed outside the long edges at the full panel length, and two end lengths at the panel width let in across the two hinge ends (so C2 is cut 36 mm short). Its wing hinges screw to the side bars, and the middle panel's two wheel-arch flaps are cut 18 mm narrower than listed so the bed stays the same overall width.</p>
   <p class="note">Table joint fittings, per pair of halves: two 8 mm × 60 mm hardwood dowels in the mating edges (30 mm each side, 200 mm apart), two over-centre toggle latches on the underside 110 mm apart, and two 30 mm table posts with floor and top plates. No hinge — the halves separate, so the surface stays flat.
   <p class="note">D1a/D1b are listed at their rectangular blank size; both are cut to the teardrop plan profile. Set out the full 1360 mm top as one shape — a 100 mm radius nose at the outboard end and a 190 mm radius tail at the other, joined by the straight tangent between the two arcs — then split it at the 680 mm line on a curve rather than a straight cut: a shallow 55 mm bow, convex on D1a and concave on D1b, running out to nothing at both ends of the joint. Round all edges over with a 6 mm radius. Neither half has a straight edge.
   <p class="note">Bed panels are listed as solid boards. The model draws them slatted; if you cut them that way, substitute two 90 mm rails plus slats per panel and the sheet count drops by about half a sheet. The four drawer fronts are 22 mm faced board in the model — they are nested here on the 18 mm sheets for convenience, so cut them from their own material and treat that nest space as spare. Nesting is a guillotine shelf fit with the kerf allowed between parts, rotation permitted — grain direction is not constrained, so re-orient any part where face grain matters before cutting.</p>
@@ -96,7 +97,7 @@ const DECK_W = (W - bayW) / 2;
 const dW = bayW - 30, dD = D - 60;
 const pT = 16, bedW = W - 20, pL = 660, FLAP_W = (1720 - bedW) / 2;
 const BAYS = [
-  ['1 · kitchen', 240], ['2 · crate', 240], ['3 · tray', 125], ['4 · fridge', 380]
+  ['1 · kitchen', 240], ['2 · crate', 240], ['3 · tray', 125], ['4 · fridge', 380, 150]
 ];
 const SHEET_L = 2400, SHEET_W = 1200;
 const r1 = v => Math.round(v * 10) / 10;
@@ -111,18 +112,18 @@ const PARTS = [
   { t: T, id: 'A8', name: 'Rear rail, hatch bay', w: bayW, h: 50, qty: 1 },
   { t: T, id: 'A9', name: 'Bay shelf', w: bayW, h: D, qty: 2 },
 ];
-BAYS.forEach(([label, dh], i) => {
+BAYS.forEach(([label, dh, wh = dh], i) => {
   const n = i + 1;
   PARTS.push(
     { t: T, id: 'B' + n + 'a', name: 'Drawer ' + label + ' — base', w: dW, h: dD, qty: 1 },
-    { t: T, id: 'B' + n + 'b', name: 'Drawer ' + label + ' — side', w: dD, h: dh, qty: 2 },
-    { t: T, id: 'B' + n + 'c', name: 'Drawer ' + label + ' — back', w: dW - 2 * T, h: dh, qty: 1 },
+    { t: T, id: 'B' + n + 'b', name: 'Drawer ' + label + ' — side', w: dD, h: wh, qty: 2 },
+    { t: T, id: 'B' + n + 'c', name: 'Drawer ' + label + (n === 4 ? ' — back (loose, drops into channels)' : ' — back'), w: dW - 2 * T - (n === 4 ? 4 : 0), h: wh, qty: 1 },
     { t: T, id: 'B' + n + 'd', name: 'Drawer ' + label + ' — front (22 mm faced board)', w: bayW + 12, h: dh + 20, qty: 1, note: 22 },
   );
 });
 PARTS.push(
   { t: pT, id: 'C1', name: 'Bed panel — aft', w: bedW, h: pL, qty: 1 },
-  { t: pT, id: 'C2', name: 'Bed panel — middle', w: bedW, h: pL, qty: 1 },
+  { t: pT, id: 'C2', name: 'Bed panel — middle (ends take the perimeter bar)', w: bedW, h: pL - 36, qty: 1 },
   { t: pT, id: 'C3', name: 'Bed panel — cab end (rises as backrest)', w: bedW, h: pL, qty: 1 },
   { t: pT, id: 'C4', name: 'Bed extension board (lies over C3)', w: bedW, h: pL, qty: 1 },
   { t: pT, id: 'C5', name: 'Wheel-arch flap', w: FLAP_W, h: pL - 30, qty: 4 },
