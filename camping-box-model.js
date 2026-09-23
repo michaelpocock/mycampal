@@ -1195,6 +1195,8 @@ const flaps = [];
 const wingStays = [];   /* sliding hooked arms under the fold-out wings */
 const sideCushions = [];
 const FLAP_W = (VW - 0.04 - W) / 2;   /* unfolded, the wings take the bed out to the full van width */
+const SIDE_PAD_W = W / 2 + FLAP_W - BED_W / 2;   /* infill pads close right up to the mattress edge */
+const WING_DZ = 0.02;   /* wing pads sit 20 mm aft of their panels so their cab edges line up with the middle / cab-end pads */
 
 const hatchSlats = [];   /* the aft panel's centre slats lift out with the hatch */
 const stackSlats = [];   /* the folded panels' centre slats — only in the way when stowed */
@@ -1391,18 +1393,18 @@ function panel(name, len, zCenter, y, parent, plain) {
        sweeps through the mattress when the flap folds up */
     let sc;
     if (soft) {
-      sc = softPlate('tmp', FLAP_W - 0.008, len - 0.04, cT, 0.086,
+      sc = softPlate('tmp', SIDE_PAD_W - 0.002, len - 0.002, cT, 0.086,
         [M.cushion_face, M.cushion_edge], new THREE.Group());
       sc.scale.x = sx;
     } else {
       sc = new THREE.Mesh(
-        new THREE.BoxGeometry(FLAP_W - 0.008, cT, len - 0.04),
+        new THREE.BoxGeometry(SIDE_PAD_W - 0.002, cT, len - 0.002),
         [M.cushion_edge, M.cushion_edge, M.cushion_face, M.cushion_face, M.cushion_edge, M.cushion_edge]);
     }
     sc.name = name.replace('bed_panel', 'side_cushion') + '_' + side;
-    sc.position.set(sx * (bedW / 2 + FLAP_W / 2), y + pT / 2 + cT / 2 + 0.002, zCenter);
+    sc.position.set(sx * (BED_W / 2 + SIDE_PAD_W / 2), y + pT / 2 + cT / 2 + 0.002, zCenter + WING_DZ);
     g.add(sc);
-    sideCushions.push({ m: sc, sx, y: y + pT / 2 + cT / 2 + 0.002, z: zCenter, dir: name === 'bed_panel_front' ? -1 : 1 });
+    sideCushions.push({ m: sc, sx, y: y + pT / 2 + cT / 2 + 0.002, z: zCenter + WING_DZ, len: len - 0.002, dir: name === 'bed_panel_front' ? -1 : 1 });
     tube(name + '_flap_pin_' + side, 0.008, len - 0.06, 0, 0, 0, M.steel, pv, 'z');
     flaps.push({ pv, sx, dir: name === 'bed_panel_front' ? -1 : 1 });   /* blue is inverted when stowed, so its wings fold the other way */
     /* two leaf stays per wing: a channel rail screwed to the panel underside with
@@ -1648,33 +1650,36 @@ for (const sx of [-1, 1]) {
 const CUSHION_Y = bedY + pT / 2 + cT / 2 + 0.002;
 const STACK_BASE = bedY + LIFT * 2 + pT / 2 + 0.004;
 const RAISE = 0.36;
+const AIR_STEP = cT + 0.012;   /* vertical spacing between pads while they are carried */
 /* the middle panel and its folded cab panel slide back in under the aft panel */
 const STOW_DY = 0;   /* stowed, the panels mesh at deck level and sit on top of the box */
 const FINGER_OVER = 0.065;   /* how far the interleaving fingers reach past their own panel edge */
-const REAR_W = (bedW - 0.02) / 3;
+const REAR_W = bedW / 3;
+const PAD_GAP = 0.002;   /* unfolded, every pad butts its neighbours with a 1 mm allowance per face */
 /* the pad joint sits on the table post, so it drops between the aft and middle pads */
 const SPLIT_Z = POST_HOLE_Z, POST_GAP = 0.03;   /* with the geometry's own 30 mm inset this clears the 60 mm post */
 const AFT_END = D / 2;   /* pads run right out to the box's aft face */
 /* only the centre pad has to clear the table post — the two outer pads run the
    full length forward to meet the middle pad, so there is no gap fore to aft.
    The +0.03 restores what the pad geometry insets at each end. */
-const SIDE_LEN = AFT_END - (SPLIT_Z - POST_GAP / 2) + 0.03;
+const PAD_JOINT = SPLIT_Z - 0.030;   /* aft pads meet the middle pad just fore of the post; the hatch pad's bored hole takes the post */
+const SIDE_LEN = AFT_END - PAD_JOINT;
 const REAR_LEN = SIDE_LEN;   /* the hatch pad runs the same length — the bored hole clears the post */
-const MID_LEN = (SPLIT_Z - POST_GAP / 2) - (hingeA - pL);
-const SIDE_Z = AFT_END - (SIDE_LEN - 0.03) / 2, REAR_Z = AFT_END - (REAR_LEN - 0.03) / 2;
-const MID_Z = SPLIT_Z - POST_GAP / 2 - MID_LEN / 2;
+const MID_LEN = PAD_JOINT - (hingeA - pL);
+const SIDE_Z = AFT_END - SIDE_LEN / 2, REAR_Z = AFT_END - REAR_LEN / 2;
+const MID_Z = PAD_JOINT - MID_LEN / 2;
 /* stacked, the pads line up on their aft edges so nothing cantilevers past the drawer fronts */
 const zs = len => hingeA + pL - len / 2;
 const cushionSpec = [
   { tag: 'rear_a', layer: 0, w: REAR_W, x: -REAR_W, len: SIDE_LEN, z: SIDE_Z, zStack: zs(SIDE_LEN) },
   { tag: 'rear_b', layer: 0, w: REAR_W, x: 0,        len: REAR_LEN, z: REAR_Z, zStack: zs(REAR_LEN) },
   { tag: 'rear_c', layer: 0, w: REAR_W, x: REAR_W,   len: SIDE_LEN, z: SIDE_Z, zStack: zs(SIDE_LEN) },
-  { tag: 'mid',    layer: 1, w: bedW - 0.02, x: 0, len: MID_LEN, z: MID_Z,     zStack: zs(MID_LEN) },
-  { tag: 'front',  layer: 2, w: bedW - 0.056, x: 0, len: pL, z: hingeA - pL * 1.5, zStack: zs(pL) },
+  { tag: 'mid',    layer: 1, w: bedW, x: 0, len: MID_LEN, z: MID_Z,     zStack: zs(MID_LEN) },
+  { tag: 'front',  layer: 2, w: bedW, x: 0, len: pL, z: hingeA - pL * 1.5, zStack: zs(pL) },
 ];
 const cushions = cushionSpec.map(s => {
   const c = new THREE.Mesh(
-    new THREE.BoxGeometry(s.w - 0.008, cT, s.len - 0.03),
+    new THREE.BoxGeometry(s.w - PAD_GAP, cT, s.len - PAD_GAP),
     [M.cushion_edge, M.cushion_edge, M.cushion_face, M.cushion_face, M.cushion_edge, M.cushion_edge]);
   c.name = 'cushion_' + s.tag;
   c.position.set(s.x, CUSHION_Y + (s.dy || 0), s.z);
@@ -1691,7 +1696,7 @@ cushionStrap.visible = false; bed.add(cushionStrap);
   const maxLen = Math.max(...cushionSpec.map(c => c.len));
   const maxW = Math.max(...cushionSpec.map(c => c.w)) - 0.008;
   const zc = hingeA + pL - maxLen / 2;
-  const yBot = STACK_BASE - 0.003, yTop = STACK_BASE + 3 * cT + 0.006 + 0.003;
+  const yBot = STACK_BASE - 0.003, yTop = STACK_BASE + 4 * cT + 0.009 + 0.003;   /* four layers: wing pads on top */
   const sw = 0.055, st = 0.005, runW = maxW + 0.012;
   box('cushion_strap_top', runW, st, sw, 0, yTop, zc, M.trim_dk, cushionStrap);
   box('cushion_strap_bottom', runW, st, sw, 0, yBot, zc, M.trim_dk, cushionStrap);
@@ -1755,6 +1760,7 @@ function poseMidLegs(t) {
 /* f = 0 unfolded over the seats, 1 folded flat on the deck.
    0–0.25 cushions lift off · 0.25–0.75 the wood folds · 0.75–1 cushions land on top */
 let folded = 1;
+let bedF = 1;   /* raw fold track, including the cushion lift / place phases */
 let peopleShown = false;   /* hidden until the button asks for them */
 let reclined = 0;
 var fitP = 1;   /* how far the box is fitted; set by setFit each frame */
@@ -1778,7 +1784,7 @@ function applyHatch() {
   for (const s of stackSlats) s.visible = !(out && folded > 0.5);   /* folded, these lie over the opening too */
   const stowedOver = out && folded > 0.5;   /* the stow stack sits right on the opening */
   for (const c of cushions) c.m.visible = !cushionsOut && !stowedOver;
-  for (const s of sideCushions) s.m.visible = !cushionsOut && !(bedMode === 'fold' && flapFold > 0.5);
+  for (const s of sideCushions) s.m.visible = !cushionsOut && (bedF > 0.001 ? !stowedOver : !(bedMode === 'fold' && flapFold > 0.5));
   midAftCushion.m.visible = !cushionsOut && !stowedOver && (folded > 0.001 || !out);
   cushionStrap.visible = !cushionsOut && (stackPlaced || strapP > 0.01);
   const key = hatchOut + '|' + cushionsOut + '|' + (folded > 0.5);
@@ -1806,7 +1812,48 @@ function requestBedMode(m) {
   }
   labels();
 }
+/* folded, the four wing pads lie side by side as the top layer of the travel stack.
+   They follow the mattress pads: lift clear, travel over, then drop onto the pile. */
+const _wv = new THREE.Vector3(), _wq = new THREE.Quaternion(), _pq = new THREE.Quaternion(), _bq = new THREE.Quaternion(), _e = new THREE.Euler(), _qi = new THREE.Quaternion();
+function poseWings() {
+  const f = bedF;
+  const lift = smooth(clamp01(f / 0.25)), move = smooth(clamp01((f - 0.25) / 0.5)), place = smooth(clamp01((f - 0.75) / 0.25));
+  const order = [...sideCushions].sort((a, b) => a.sx - b.sx || a.sx * (a.dir - b.dir));
+  const step = SIDE_PAD_W + 0.002;
+  const yS = STACK_BASE + cT / 2 + 3 * (cT + 0.003);
+  bed.updateMatrixWorld(true);
+  bed.getWorldQuaternion(_bq);
+  order.forEach((s, k) => {
+    if (!s.fp) return;
+    const par = s.m.parent;
+    par.getWorldQuaternion(_pq);
+    /* the wing pose lives in the folding panel's frame; blend in bed space so the
+       folded hinges don't flip the stack target */
+    if (f < 0.25 || !s.fpBed) {
+      if (f < 0.25) {
+        _wv.set(s.fp.x, s.fp.y, s.z); par.localToWorld(_wv); bed.worldToLocal(_wv);
+        _wq.setFromEuler(_e.set(0, 0, s.fp.rz)).premultiply(_pq).premultiply(_bq.clone().invert());
+        s.fpBed = { p: _wv.clone(), q: _wq.clone() };
+      } else {
+        s.fpBed = { p: new THREE.Vector3(s.sx * (BED_W / 2 + SIDE_PAD_W / 2), CUSHION_Y,
+          (s.dir > 0 ? hingeA - MID_L / 2 : hingeA - MID_L - pL / 2) + WING_DZ), q: new THREE.Quaternion() };
+      }
+    }
+    const p0 = s.fpBed.p;
+    const xS = (k - 1.5) * step, zS = hingeA + pL - s.len / 2;
+    /* each wing pad gets its own level above the mattress pads: pads on the same side
+       converge on one another as they travel, so they must not share a height */
+    const hi = CUSHION_Y + RAISE + (3 + k) * AIR_STEP;
+    const yUp = p0.y + (hi - p0.y) * lift;
+    _wv.set(p0.x + (xS - p0.x) * move, (1 - place) * yUp + place * yS, p0.z + (zS - p0.z) * move);
+    bed.localToWorld(_wv); par.worldToLocal(_wv);
+    s.m.position.copy(_wv);
+    _wq.copy(s.fpBed.q).slerp(_qi, lift).premultiply(_bq).premultiply(_pq.clone().invert());
+    s.m.quaternion.copy(_wq);
+  });
+}
 function setFold(f) {
+  bedF = f;
   const fp = clamp01((f - 0.25) / 0.5);
   folded = fp;
   if (fp > 0.5 && uiReady && anim.bed.target === 1) hatchOut = false;   /* stowing — the panel goes back in first */
@@ -1852,9 +1899,12 @@ function setFold(f) {
   for (const c of cushions) {
     const yStack = STACK_BASE + cT / 2 + (2 - c.i) * (cT + 0.003);
     c.m.position.z = c.z0 + (c.zStack - c.z0) * fp;
-    c.m.position.y = (1 - place) * (CUSHION_Y + c.dy + (RAISE + c.i * 0.012) * lift) + place * yStack;
+    /* aloft, each layer rides a full pad thickness above the one below it — in stack order —
+       so pads crossing over each other never pass through one another */
+    c.m.position.y = (1 - place) * (CUSHION_Y + c.dy + (RAISE + (2 - c.i) * AIR_STEP) * lift) + place * yStack;
   }
   stackPlaced = place > 0.96;
+  poseWings();
   applyHatch();
 }
 /* p = 0 buckled round the stack · 1 unbuckled and lying beside the box */
@@ -1900,16 +1950,16 @@ function setFlaps(g) {
   for (const s of sideCushions) {
     const dir = s.dir * inv;
     const g2 = gg(s.dir);
-    const xDep = s.sx * (W / 2 + FLAP_W / 2);
+    const xDep = s.sx * (BED_W / 2 + SIDE_PAD_W / 2);
     const xFold = fold180 ? s.sx * (W / 2 - FLAP_W / 2)
                           : s.sx * (W / 2 - cT / 2 - 0.014);   /* folds inboard onto the stack — outboard there is no room past the arches */
-    s.m.position.x = xDep + (xFold - xDep) * g2;
+    const fx = xDep + (xFold - xDep) * g2;
     /* flat-folded, the wing lands face-down on its own panel and the infill
        cushion rides on its far side; stood on edge it has to be lifted instead */
     const lift = fold180 ? (pT + cT) : ((FLAP_W - cT) / 2 + (dir < 0 ? 2 * (pT / 2 + cT / 2 + 0.002) : 0));
-    s.m.position.y = s.y + lift * g2 * dir;
-    s.m.rotation.z = s.sx * dir * ANG * g2;
+    s.fp = { x: fx, y: s.y + lift * g2 * dir, rz: s.sx * dir * ANG * g2 };
   }
+  poseWings();
   applyHatch();
 }
 
