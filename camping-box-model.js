@@ -201,7 +201,8 @@ const TOPDX = 0.46;   /* the joint between the halves, on the van's centreline *
 const HALF_W = TBL_W / 2, POST_LEN = TBL_H - 0.05;
 const TBL_H_HI = 0.70;   /* the pedestal is adjustable — dining height with the bed folded */
 const TBL_H_BED = H - 0.020;   /* top level with the overlay board's underside, so the panels rest on it */
-let tblH = TBL_H_HI;
+let tblH = TBL_H_HI, tblHTarget = TBL_H_HI;
+const FOLD_PROUD = 0.027;   /* folded leaves stand this far above the open table top */
 const HALF_DX = TOPDX - HALF_W / 2;   /* centre of half A */
 
 /* the top is a teardrop in plan: a 200 mm round nose at the outboard end, swelling
@@ -714,9 +715,13 @@ const POST_HOLE_R = 0.030;
   const sh = new THREE.Shape();
   sh.moveTo(-w / 2, -d / 2); sh.lineTo(w / 2, -d / 2); sh.lineTo(w / 2, d / 2);
   sh.lineTo(-w / 2, d / 2); sh.closePath();
-  const geo = new THREE.ExtrudeGeometry(sh, { depth: T, bevelEnabled: false });
+  /* bored over the bedside leg bracket, so the post drops through with the panel fitted */
+  const hp = new THREE.Path(); hp.absarc(BSL_PX, -POST_HOLE_Z, POST_HOLE_R, 0, Math.PI * 2, true); sh.holes.push(hp);
+  const geo = new THREE.ExtrudeGeometry(sh, { depth: T, bevelEnabled: false, curveSegments: 24 });
   geo.rotateX(-Math.PI / 2); geo.translate(0, -T / 2, 0);
   const p = new THREE.Mesh(geo, M.ply_dark); p.name = 'top_panel'; topPanel.add(p);
+  const lin = new THREE.Mesh(new THREE.CylinderGeometry(POST_HOLE_R, POST_HOLE_R, T + 0.002, 28, 1, true), M.steel);
+  lin.name = 'top_panel_post_liner'; lin.position.set(BSL_PX, 0, POST_HOLE_Z); topPanel.add(lin);
 }
 box('top_panel_finger_slot', 0.09, 0.008, 0.022, 0, T / 2 - 0.003, D / 2 - 0.07, M.stove, topPanel);
 /* no rear rail over the drawer bays — the drawer fronts close the face there, and a
@@ -727,7 +732,7 @@ const hatchRail = box('carcass_rear_rail_middle', bayW, 0.05, T, 0, H - T - 0.02
    bed panels land on it once they are run out over the drawers */
 /* notched at the two leg positions so the folded legs can stand down through it */
 {
-  const bz = -D / 2 - 0.03 + T, legX = (W - 0.02) / 2 - 0.055, notch = 0.035;
+  const bz = -D / 2 - 0.03 + T, bw = W - 0.02, lw = 0.28, legX = bw / 4, notch = lw / 2 + 0.01;   /* legs match the backrest props: 280 mm wide, centred at bedW/4 (BED_W is declared later) */
   const spans = [[-W / 2, -legX - notch], [-legX + notch, legX - notch], [legX + notch, W / 2]];
   for (let i = 0; i < spans.length; i++) {
     const [a, b2] = spans[i];
@@ -1323,6 +1328,7 @@ for (const k in PANEL_MATS) {
 }
 const jointSlats = [];
 const rearFingers = [], rearFill = [], rearFillBay = [];
+const midFingers = [], midFill = [], midFillBay = [];   /* the green panel gets the same vented board in folding mode */
 function panel(name, len, zCenter, y, parent, plain) {
   const g = new THREE.Group(); g.name = name;
   const pc = PANEL_MATS[name], pm = pc ? pc[0] : M.ply, pmd = pc ? pc[1] : M.ply_dark;
@@ -1340,8 +1346,9 @@ function panel(name, len, zCenter, y, parent, plain) {
     const rz = zCenter + sz * (len / 2 - rInset - rD / 2), rn = name + '_rail_' + (isRear ? 'aft' : 'fore');
     /* cut at the middle bay so nothing crosses the hatch opening */
     const rW = (bedW - bayW) / 2;
+    const rbi = name === 'bed_panel_mid' ? 0.018 : 0;   /* stop at the border bar's inner face */
     for (const rx of [-1, 1]) {
-      box(rn + (rx < 0 ? '_left' : '_right'), rW, pT, rD, rx * (bayW + rW) / 2, y, rz, pm, g);
+      box(rn + (rx < 0 ? '_left' : '_right'), rW - rbi, pT, rD, rx * (bayW + rW - rbi) / 2, y, rz, pm, g);
     }
     const rMid = box(rn + '_middle', bayW - 0.006, pT, rD, 0, y, rz, pm, g);
     (isRear ? hatchSlats : stackSlats).push(rMid);
@@ -1361,7 +1368,7 @@ function panel(name, len, zCenter, y, parent, plain) {
       const sfx = Math.abs(x) < 1e-6 ? 'c' : (x < 0 ? 'l' : 'r');
       /* the bedside post stands in a socket over each drawer bay, so the orange
          panel's finger over each socket is broken open there */
-      const postGap = false;   /* the top-deck sockets are gone — the swivel leg rises through the hatch opening */
+      const postGap = Math.abs(x - BSL_PX) < POST_HOLE_R + sw / 2;   /* the finger over the bedside post is broken open round it */
       if (isRear && postGap) {
         const clr = POST_HOLE_R + 0.006;
         const cuts = [POST_HOLE_Z - hingeA];
@@ -1386,16 +1393,32 @@ function panel(name, len, zCenter, y, parent, plain) {
          so each finger is pulled back inside its own panel */
       jointSlats.push({ m: s, sd, sz0, butt: sd - 0.09, buttZ: zCenter });
       if (inBay) (isRear ? hatchSlats : stackSlats).push(s);
-      if (isRear) rearFingers.push(s);
+      if (isRear) rearFingers.push(s); else midFingers.push(s);
     }
     /* folding mode overlaps the panels instead of interleaving them, so orange
        can be a solid board — open only where the hatch panel lifts out */
-    if (isRear) {
-      const fz = zCenter - 0.025, fl = len - 0.05;
+    if (isRear || name === 'bed_panel_mid') {
+      /* orange: the infill stops 50 mm short of the hinge edge, where a fore rail closes the
+         border between the two side frame rails. Green: it fills between its fore rail and
+         the aft border bar, with the same slots as orange. */
+      const FR = 0.05;
+      const mzA = zCenter - len / 2 + 0.05, mzB = zCenter + len / 2 - 0.018;
+      const fz = isRear ? zCenter - 0.025 + FR / 2 : (mzA + mzB) / 2;
+      const fl = isRear ? len - 0.05 - FR : mzB - mzA;
+      const fillL = isRear ? rearFill : midFill, fillBay = isRear ? rearFillBay : midFillBay;
       const sw2 = bedW / 2 - fw - bayW / 2;
+      if (isRear) {
+        const rz = zCenter - len / 2 + FR / 2;
+        /* only with the solid board (folding mode) — sliding mode keeps the open finger joint */
+        for (const rx of [-1, 1])
+          rearFill.push(box(name + '_rail_fore_' + (rx < 0 ? 'left' : 'right'), sw2, pT, FR, rx * (bayW / 2 + sw2 / 2), y, rz, pm, g));
+        /* over the hatch bay the fore rail and infill are one bored sheet (below), so the
+           bedside post's bore sits wholly inside it */
+      }
       /* the boards are ventilated on the green panel's own rhythm: one slot per
          finger pitch, running lengthwise like the slats either side of them */
-      const vent = (nm, w, d, px, bores) => {
+      const vent = (nm, w, d, px, bores, fzOwn) => {
+        const fz0 = fzOwn === undefined ? fz : fzOwn;
         const sh = new THREE.Shape();
         sh.moveTo(-w / 2, -d / 2); sh.lineTo(w / 2, -d / 2); sh.lineTo(w / 2, d / 2);
         sh.lineTo(-w / 2, d / 2); sh.closePath();
@@ -1415,28 +1438,92 @@ function panel(name, len, zCenter, y, parent, plain) {
         }
         for (const [bx, bz] of (bores || [])) {   /* clearance for the bedside table post */
           const hp = new THREE.Path();
-          hp.absarc(bx, -(bz - fz), POST_HOLE_R, 0, Math.PI * 2, true);
+          hp.absarc(bx, -(bz - fz0), POST_HOLE_R, 0, Math.PI * 2, true);
           sh.holes.push(hp);
         }
         const geo = new THREE.ExtrudeGeometry(sh, { depth: pT, bevelEnabled: false });
         geo.rotateX(-Math.PI / 2); geo.translate(0, -pT / 2, 0);
         const m = new THREE.Mesh(geo, pmd);
         m.name = nm; m.castShadow = m.receiveShadow = true;
-        m.position.set(px, y, fz);
+        m.position.set(px, y, fz0);
         g.add(m);
         return m;
       };
       for (const rx of [-1, 1]) {
         const px = rx * (bayW / 2 + sw2 / 2);
-        rearFill.push(vent(name + '_infill_' + (rx < 0 ? 'left' : 'right'), sw2, fl, px));
+        fillL.push(vent(name + '_infill_' + (rx < 0 ? 'left' : 'right'), sw2, fl, px));
       }
-      const bf = vent(name + '_infill_bay', bayW - 0.006, fl, 0);
-      rearFill.push(bf); rearFillBay.push(bf);
+      const bf = isRear
+        ? vent(name + '_infill_bay', bayW - 0.006, fl + FR, 0, [[BSL_PX, POST_HOLE_Z - hingeA]], fz - FR / 2)
+        : vent(name + '_infill_bay', bayW - 0.006, fl, 0);
+      fillL.push(bf); fillBay.push(bf);
     }
     if (true) for (const rx of [-1, 1]) {   /* long-edge frame rails */
-      box(name + '_frame_' + (rx < 0 ? 'left' : 'right'), fw, pT, len - 0.05,
-          rx * (bedW - fw) / 2, y, zCenter + (isRear ? -0.025 : 0), pm, g);
+      /* on the middle panel the outer 18 mm of each rail is the border bar instead */
+      const bi = name === 'bed_panel_mid' ? 0.018 : 0;
+      /* on the green panel the rails run between the fore rail and the aft border bar, butting both */
+      const fzA = bi ? zCenter - len / 2 + 0.05 : 0, fzB = bi ? zCenter + len / 2 - 0.018 : 0;
+      box(name + '_frame_' + (rx < 0 ? 'left' : 'right'), fw - bi, pT, bi ? fzB - fzA : len - 0.05,
+          rx * (bedW - fw - bi) / 2, y, bi ? (fzA + fzB) / 2 : zCenter + (isRear ? -0.025 : 0), pm, g);
     }
+  } else if (name === 'bed_panel_overlay') {
+    /* the pink board is a solid sheet */
+    /* built in three parts split on the hatch lines. A notch the size of each middle-panel
+       leg is cut in from the hinge edge, so a leg folded flat nests in the board, flush with
+       it; the leg's own openings then act as the prop slots. The middle strip hides with the
+       stack over the open hatch bay. */
+    const z0 = zCenter - len / 2, z1 = zCenter + len / 2;
+    const NCLR = 0.003, NW = 0.28 + 2 * NCLR;           /* leg width (BR_PROP_W) + clearance */
+    const zn = 0.009 - 0.590 - 0.016;                    /* leg hinge − 590 mm leg − 12 mm rail shoe − clearance, in pivotB z */
+    const notches = [-1, 1].map(sx => [sx * bedW / 4 - NW / 2, sx * bedW / 4 + NW / 2]);
+    /* slots either side of each leg notch, in line with the leg's own openings (45 mm, at
+       the four gap positions) so the gaps read straight across the board: a 25 mm web to
+       the notch, a 50 mm margin to the outer edge, and one run across the middle */
+    const WEB = 0.025, EDGE = 0.05, SLOT_D = 0.045;
+    const inner = notches[1][0] - WEB, outerA = notches[1][1] + WEB, outerB = bedW / 2 - EDGE;
+    const slotRuns = [[-inner, inner], [outerA, outerB], [-outerB, -outerA]];
+    const slotZ = [1, 2, 3, 4].map(i => z0 + (len / 5) * i);
+    const sheet = (tag, xa, xb) => {
+      const sh = new THREE.Shape();
+      const cuts = notches.map(([a, b]) => [Math.max(a, xa), Math.min(b, xb)]).filter(([a, b]) => b > a + 1e-6)
+        .sort((p, q) => q[0] - p[0]);   /* walk the hinge edge from xb back to xa */
+      sh.moveTo(xa, z0); sh.lineTo(xb, z0);
+      let atEdge = true;
+      if (cuts.length && Math.abs(cuts[0][1] - xb) < 1e-6) { sh.lineTo(xb, zn); atEdge = false; }
+      else sh.lineTo(xb, z1);
+      for (const [ca, cb] of cuts) {
+        if (atEdge) { sh.lineTo(cb, z1); sh.lineTo(cb, zn); }
+        sh.lineTo(ca, zn);
+        if (Math.abs(ca - xa) < 1e-6) { atEdge = false; break; }
+        sh.lineTo(ca, z1); atEdge = true;
+      }
+      if (atEdge) sh.lineTo(xa, z1);
+      sh.closePath();
+      for (const [a, b] of slotRuns) {
+        if (a < xa + 0.005 || b > xb - 0.005) continue;   /* only runs wholly inside this piece */
+        for (const cz of slotZ) {
+          const hp = new THREE.Path();
+          hp.moveTo(a, cz - SLOT_D / 2); hp.lineTo(a, cz + SLOT_D / 2); hp.lineTo(b, cz + SLOT_D / 2); hp.lineTo(b, cz - SLOT_D / 2); hp.closePath();
+          sh.holes.push(hp);
+        }
+      }
+      const geo = new THREE.ExtrudeGeometry(sh, { depth: pT, bevelEnabled: false });
+      const pos = geo.attributes.position, nrm = geo.attributes.normal;
+      for (let i = 0; i < pos.count; i += 3) {   /* flat, true normals on the faces */
+        const zA = pos.getZ(i);
+        if (Math.abs(pos.getZ(i + 1) - zA) < 1e-6 && Math.abs(pos.getZ(i + 2) - zA) < 1e-6)
+          for (let k = 0; k < 3; k++) nrm.setXYZ(i + k, 0, 0, zA > 0 ? 1 : -1);
+      }
+      geo.rotateX(Math.PI / 2);   /* shape y → z, extrusion → down */
+      geo.translate(0, y + pT / 2, 0);
+      const m = new THREE.Mesh(geo, pm);
+      m.name = name + '_sheet_' + tag; m.castShadow = true; m.receiveShadow = false; m.userData.noReceive = true;
+      g.add(m);
+      return m;
+    };
+    sheet('left', -bedW / 2, -bayW / 2);
+    sheet('right', bayW / 2, bedW / 2);
+    stackSlats.push(sheet('middle', -bayW / 2 + 0.003, bayW / 2 - 0.003));
   } else {
   box(name + '_rail_left',  0.05, pT, len, -bedW / 2 + 0.025, y, zCenter, pm, g);
   box(name + '_rail_right', 0.05, pT, len,  bedW / 2 - 0.025, y, zCenter, pm, g);
@@ -1458,20 +1545,21 @@ function panel(name, len, zCenter, y, parent, plain) {
     box(name + '_slat_' + (i + 1), bedW - 0.12, pT, sd, 0, y, z, pmd, g);
   }
   /* cross rails at each end close the frame */
-  if (name === 'bed_panel_front') for (const ez of [-1, 1]) {
+  /* the pink overlay board gets the same end rails, fitted inside its own length
+     between the side rails, so its footprint doesn't change */
+  if (name === 'bed_panel_front' || name === 'bed_panel_overlay') for (const ez of [-1, 1]) {
     box(name + '_frame_' + (ez < 0 ? 'fore' : 'aft'), bedW - 0.1, pT, 0.022,
         0, y, zCenter + ez * (len / 2 - 0.011), pm, g);
   }
   }
-  /* the middle panel is edged with an 18 mm timber perimeter bar, flush with its faces.
-     Along the long sides it is fixed outside the panel edge, so the wing hinges move out
-     onto it; across the two ends — both hinge lines — it is let into the panel's own
-     length so the neighbouring panels still butt up to it */
+  /* the middle panel is edged with an 18 mm timber border bar, flush with its faces and
+     let in all round inside its own footprint, so the panel is no bigger and the wing
+     hinges stay on the panel edge */
   const PBAR = name === 'bed_panel_mid' ? 0.018 : 0;
   if (PBAR) {
     const pbm = new THREE.MeshStandardMaterial({ color: 0x9a6a3c, roughness: 0.7, metalness: 0.02 });
     for (const sx of [-1, 1])
-      box(name + '_perimeter_bar_' + (sx < 0 ? 'left' : 'right'), PBAR, pT + 0.002, len, sx * (bedW / 2 + PBAR / 2), y, zCenter, pbm, g);
+      box(name + '_perimeter_bar_' + (sx < 0 ? 'left' : 'right'), PBAR, pT + 0.002, len - 2 * PBAR, sx * (bedW / 2 - PBAR / 2), y, zCenter, pbm, g);
     for (const [tag, ez] of [['fore', -1], ['aft', 1]])
       box(name + '_perimeter_bar_' + tag, bedW, pT + 0.002, PBAR, 0, y, zCenter + ez * (len / 2 - PBAR / 2), pbm, g);
   }
@@ -1479,13 +1567,14 @@ function panel(name, len, zCenter, y, parent, plain) {
   for (const sx of (name === 'bed_panel_mid' || name === 'bed_panel_front') ? [-1, 1] : []) {
     const side = sx < 0 ? 'left' : 'right';
     const pv = new THREE.Group(); pv.name = name + '_flap_hinge_' + side;
-    pv.position.set(sx * (bedW / 2 + PBAR), y, zCenter); g.add(pv);
+    pv.position.set(sx * (bedW / 2), y, zCenter); g.add(pv);
     const soft = name === 'bed_panel_front';   /* the pair nearest the cab */
     if (soft) {
-      const fl = softPlate(name + '_flap_' + side, FLAP_W, len - 0.03, pT, 0.09, pm, pv);
-      fl.position.set(sx * FLAP_W / 2, 0, 0); fl.scale.x = sx;
+      /* run out 15 mm further at the cab end so the wing's top edge is flush with the panel's */
+      const fl = softPlate(name + '_flap_' + side, FLAP_W, len - 0.015, pT, 0.09, pm, pv);
+      fl.position.set(sx * FLAP_W / 2, 0, -0.0075); fl.scale.x = sx;
     } else {
-      box(name + '_flap_' + side, FLAP_W - PBAR, pT, len - 0.03, sx * (FLAP_W - PBAR) / 2, 0, 0, pm, pv);   /* narrowed by the bar, so the outer edge stays put */
+      box(name + '_flap_' + side, FLAP_W, pT, len - 0.03, sx * FLAP_W / 2, 0, 0, pm, pv);
     }
     /* infill cushion out to the van wall — posed from setFold so it never
        sweeps through the mattress when the flap folds up */
@@ -1541,10 +1630,52 @@ panel('bed_panel_mid', MID_L, -MID_L / 2, 0, pivotA);
 
 const pivotB = new THREE.Group(); pivotB.name = 'bed_hinge_b';
 pivotB.position.set(0, 0, -MID_L); pivotA.add(pivotB);
-tube('hinge_mid_front', 0.011, bedW - 0.06, 0, 0, 0, M.steel, pivotB);
-const frontPivot = new THREE.Group(); frontPivot.name = 'bed_front_recline';
+/* the cab-end panel is split down the centreline: each half rides its own hinge
+   and rises as its own backrest in the lounger */
+for (const sx of [-1, 1]) {
+  const hl = (bedW - 0.06) / 2 - 0.006;
+  tube('hinge_mid_front_' + (sx < 0 ? 'left' : 'right'), 0.011, hl, sx * (hl / 2 + 0.006), 0, 0, M.steel, pivotB);
+}
+const frontPivot = new THREE.Group(); frontPivot.name = 'bed_front_recline_left';
 frontPivot.position.set(0, 0, 0); pivotB.add(frontPivot);
-panel('bed_panel_front', pL, -pL / 2, 0, frontPivot);
+const frontPivotR = new THREE.Group(); frontPivotR.name = 'bed_front_recline_right';
+frontPivotR.position.set(0, 0, 0); pivotB.add(frontPivotR);
+const frontPivots = { '-1': frontPivot, '1': frontPivotR };
+{
+  const gL = panel('bed_panel_front', pL, -pL / 2, 0, frontPivot);
+  gL.name = 'bed_panel_front_left';
+  const gR = new THREE.Group(); gR.name = 'bed_panel_front_right'; frontPivotR.add(gR);
+  const SPLIT = 0.006;   /* saw kerf + running clearance between the two halves */
+  const IN_RAIL = 0.05;   /* each half gets its own inner edge rail, so its frame is closed all round */
+  for (const ch of [...gL.children]) {
+    const x = ch.position.x;
+    if (Math.abs(x) < 1e-4 && ch.isMesh && ch.geometry.parameters && ch.geometry.parameters.width) {
+      /* centred parts (middle slats, end frame rails) are cut in two */
+      const p = ch.geometry.parameters;
+      /* slats stop short of the new inner edge rail; the end rails run in to meet it */
+      const inset = /_slat_/.test(ch.name) ? IN_RAIL : 0;
+      const hw = p.width / 2 - SPLIT / 2 - inset;
+      const halves = [-1, 1].map(sx => {
+        const m = new THREE.Mesh(new THREE.BoxGeometry(hw, p.height, p.depth), ch.material);
+        m.name = ch.name + (sx < 0 ? '_left' : '_right');
+        m.position.set(sx * (hw / 2 + SPLIT / 2 + inset), ch.position.y, ch.position.z);
+        (sx < 0 ? gL : gR).add(m);
+        return m;
+      });
+      gL.remove(ch);
+      const i = stackSlats.indexOf(ch);
+      if (i >= 0) stackSlats.splice(i, 1, ...halves);
+      continue;
+    }
+    if (x > 0) gR.add(ch);   /* add() re-parents; both pivots share an origin */
+  }
+  /* inner long-edge rail on each half, fitted between the fore and aft end rails */
+  const railMat = gL.getObjectByName('bed_panel_front_rail_left').material;
+  for (const sx of [-1, 1]) {
+    box('bed_panel_front_rail_inner_' + (sx < 0 ? 'left' : 'right'), IN_RAIL, pT, pL - 0.044,
+        sx * (SPLIT / 2 + IN_RAIL / 2), 0, -pL / 2, railMat, sx < 0 ? gL : gR);
+  }
+}
 /* second board laid on top, lapping the hinge line — it stays flat while the
    backrest panel underneath it rises into the lounger */
 const OVL_Z = -pL / 2;   /* exactly over the panel that rises into the backrest */
@@ -1560,16 +1691,31 @@ for (const sx of []) {   /* overlay legs removed for now */
 /* prop under the backrest: a single ply panel hinged to the underside. Swung
    down it stands on the panel below; folded it lies flat under the backrest. */
 const BR_LEG_Z = -0.34, BR_LEG_L = 0.44;
-const BR_PROP_W = bedW - 0.24;
+const BR_PROP_W = 0.51;   /* one 510 mm prop under each backrest half, spanning three rows of board slots */
 const brLegs = [];
-{
+for (const sx of [-1, 1]) {
+  const side = sx < 0 ? 'left' : 'right';
   const pv = new THREE.Group();
-  pv.name = 'lounger_prop_hinge';
-  pv.position.set(0, -pT / 2, BR_LEG_Z);
-  frontPivot.add(pv);
-  box('lounger_prop_panel', BR_PROP_W, BR_LEG_L, 0.018, 0, -BR_LEG_L / 2, 0, M.ply_dark, pv);
-  /* a bearer along the bottom edge spreads the load onto the board below */
-  box('lounger_prop_bearer', BR_PROP_W, 0.030, 0.045, 0, -BR_LEG_L + 0.015, 0.014, M.ply, pv);
+  pv.name = 'lounger_prop_hinge_' + side;
+  pv.position.set(sx * bedW / 4, -pT / 2, BR_LEG_Z);
+  pv.userData.sx = sx;
+  frontPivots[sx].add(pv);
+  /* stepped prop, from the user's sketch: a full-width body under the hinge, then a
+     narrower centred tongue at the foot that drops into the slat gap. Proportions are
+     of the 261 mm working length (body 196, tongue 65 × 165 wide); the group is scaled to PROP_L. */
+  const bodyL = BR_LEG_L * (196 / 261), tongueL = BR_LEG_L - bodyL, TONGUE_W = 0.165;
+  /* offsets are from the hinge at bedW/4, mirrored for the left half. The body runs
+     from 20 mm off the centre split out to 530 mm; three fingers drop into the pink
+     board's slots: the centre run (to x 117), the leg opening (165 wide, centred) and
+     the outboard slot (x 470..530). */
+  const span = (a, b) => [sx * ((a + b) / 2 - bedW / 4), b - a];
+  const [bx, bw] = span(0.02, 0.53);
+  box('lounger_prop_panel_' + side, bw, bodyL, 0.018, bx, -bodyL / 2, 0, M.ply_dark, pv);
+  for (const [tag, a, b] of [['inner', 0.02, 0.117], ['tongue', bedW / 4 - TONGUE_W / 2, bedW / 4 + TONGUE_W / 2], ['outer', 0.47, 0.53]]) {
+    const [fx, fw] = span(a, b);
+    box('lounger_prop_' + (tag === 'tongue' ? 'tongue' : 'finger_' + tag) + '_' + side, fw, tongueL, 0.018, fx, -bodyL - tongueL / 2, 0, M.ply_dark, pv);
+  }
+  /* no bearer: the bare 18 mm edge drops into a 45 mm gap between the pink board's slats */
   brLegs.push(pv);
 }
 
@@ -1578,7 +1724,7 @@ const brLegs = [];
 const MSURF = pT / 2 + cT + 0.012;
 const occupants = [];
 function person(tag, x, kit) {
-  const up = new THREE.Group(); up.name = 'person_' + tag + '_upper'; frontPivot.add(up);
+  const up = new THREE.Group(); up.name = 'person_' + tag + '_upper'; frontPivots[x < 0 ? -1 : 1].add(up);
   box('person_' + tag + '_torso', 0.36, 0.17, 0.44, x, MSURF + 0.085, -0.27, kit.top, up);
   box('person_' + tag + '_neck', 0.10, 0.10, 0.06, x, MSURF + 0.085, -0.52, kit.skin, up);
   const head = new THREE.Mesh(new THREE.SphereGeometry(0.093, 20, 16), kit.skin);
@@ -1727,20 +1873,89 @@ for (const sx of []) {   /* legs removed for now */
 /* the middle panel's own pair of ply legs, screwed to its underside on the cab-end
    edge, so they travel out with the panel. Each is separately hinged: it either
    stands on the van floor or folds flat over a seat that is still fitted. */
-const MID_LEG_L = H - 0.007;   /* panel underside down to the load floor, less the foot block */
+const MID_LEG_L = 0.590;   /* panel underside down to the load floor — no separate foot */
+const STAY_A = 0.20, STAY_L = 0.28, STAY_DX = 0.10;   /* pin 200 mm down the leg, 280 mm stay, 100 mm either side of the leg centre */
+const STAY_STAND_S = Math.sqrt(STAY_L * STAY_L - (STAY_A + 0.012 - 0.009) ** 2) - 0.012;   /* slider travel aft of the hinge, standing */
+/* each leg sits under the backrest prop's middle finger, on the same centreline */
+const MID_LEG_W = 0.28, MID_LEG_X = bedW / 4;
+/* the legs are slatted frames: two stiles and cross slats that, with the leg folded
+   flat under the panel, sit exactly under the pink overlay board's slats */
+const LEG_STILE = 0.05, LEG_SLAT_D = pL / 5 - 0.045;
+const LEG_SLAT_Y = [0, 1, 2, 3, 4].map(i => 0.009 + pL - (pL / 5) * (i + 0.5))
+  .filter(d => d + LEG_SLAT_D / 2 < MID_LEG_L - 0.02);
 const legs2 = new THREE.Group(); legs2.name = 'bed_legs_mid';
 legs2.position.set(0, -pT / 2, -0.12); pivotB.add(legs2);   /* kept as the stow-time group */
 const midLegs = [];
 for (const sx of [-1, 1]) {
   const s = sx < 0 ? 'left' : 'right';
   const pv = new THREE.Group(); pv.name = 'bed_leg_mid_' + s + '_hinge';
-  pv.position.set(sx * (bedW / 2 - 0.055), -pT / 2, -MID_L + 0.009);   /* hard on the fore edge — folded, the blade passes fore of the bed support bar */
+  pv.position.set(sx * MID_LEG_X, -pT / 2, -MID_L + 0.009);   /* hard on the fore edge — folded, the blade passes fore of the bed support bar */
   pivotA.add(pv);
-  box('bed_leg_mid_' + s, 0.05, MID_LEG_L, 0.018, 0, -MID_LEG_L / 2, 0, M.ply_dark, pv);
-  box('bed_leg_mid_' + s + '_foot', 0.09, 0.014, 0.07, 0, -MID_LEG_L, 0, M.trim_dk, pv);
-  /* short gusset, kept in line with the blade so both pass through the bar's notch */
-  box('bed_leg_mid_' + s + '_brace', 0.05, 0.05, 0.018, 0, -0.09, 0, M.ply_dark, pv);
-  midLegs.push({ pv, s, seat: sx < 0 ? 'row2_1' : 'row2_3' });
+  for (const ex of [-1, 1]) {
+    box('bed_leg_mid_' + s + '_stile_' + (ex < 0 ? 'left' : 'right'), LEG_STILE, MID_LEG_L, 0.018,
+        ex * (MID_LEG_W / 2 - LEG_STILE / 2), -MID_LEG_L / 2, 0, M.ply_dark, pv);
+  }
+  LEG_SLAT_Y.forEach((d, i) => box('bed_leg_mid_' + s + '_slat_' + (i + 1), MID_LEG_W - 2 * LEG_STILE, LEG_SLAT_D, 0.018,
+      0, -d, 0, M.ply_dark, pv));
+  /* foot rail starts where the board's cab-end slot ends, so the leg's last opening is a
+     full 45 mm and lines up with that slot (and the 23° prop tongue drops through it) */
+  const FR_TOP = 0.009 + (pL / 5) * 4 + 0.0225, FR_H = MID_LEG_L - FR_TOP;
+  box('bed_leg_mid_' + s + '_rail_foot', MID_LEG_W - 2 * LEG_STILE, FR_H, 0.018, 0, -FR_TOP - FR_H / 2, 0, M.ply_dark, pv);
+  /* floor-rail shoe: an aluminium tongue under the foot that drops 12 mm into the van's
+     seat rail, locked by a quarter-turn stud on the aft face */
+  box('bed_leg_mid_' + s + '_rail_shoe', 0.018, 0.012, 0.014, 0, -MID_LEG_L - 0.006, 0, M.steel, pv);   /* 18 mm, drops between the rail's 22 mm lips */
+  tube('bed_leg_mid_' + s + '_rail_stud', 0.008, 0.012, 0, -MID_LEG_L + 0.02, 0.015, M.steel, pv, 'z');
+  box('bed_leg_mid_' + s + '_rail_stud_wing', 0.028, 0.006, 0.004, 0, -MID_LEG_L + 0.02, 0.022, M.stove, pv);
+  /* folding lock stays: one inboard of each stile, pinned to the leg's aft face 200 mm
+     down and sliding in a channel under the green panel. Standing, the slider clicks
+     into a spring catch and the stay locks the leg into a triangle; a thumb trigger
+     releases it to fold. */
+  const stays = [];
+  for (const ex of [-1, 1]) {
+    const xs = sx * MID_LEG_X + ex * STAY_DX;
+    const rod = box('bed_leg_mid_' + s + '_stay_' + (ex < 0 ? 'a' : 'b'), 0.020, 0.005, 1, 0, 0, 0, M.steel, pivotA);
+    const slider = box('bed_leg_mid_' + s + '_stay_slider_' + (ex < 0 ? 'a' : 'b'), 0.026, 0.010, 0.030, 0, 0, 0, M.stove, pivotA);
+    const hz = -MID_L + 0.009;
+    const ch0 = hz + 0.05, ch1 = hz + 0.25;
+    box('bed_leg_mid_' + s + '_stay_channel_' + (ex < 0 ? 'a' : 'b'), 0.030, 0.008, ch1 - ch0, xs, -pT / 2 - 0.004, (ch0 + ch1) / 2, M.steel, pivotA);
+    /* spring catch just aft of where the slider lands with the leg standing, butting it */
+    const standAy = -pT / 2 - STAY_A, standBz = hz + 0.012 + Math.sqrt(STAY_L * STAY_L - (-pT / 2 - 0.009 - standAy) ** 2);
+    box('bed_leg_mid_' + s + '_stay_catch_' + (ex < 0 ? 'a' : 'b'), 0.034, 0.012, 0.012, xs, -pT / 2 - 0.0065, standBz + 0.015 + 0.006, M.latch, pivotA);
+    stays.push({ rod, slider, xs, hz });
+  }
+  midLegs.push({ pv, s, seat: sx < 0 ? 'row2_1' : 'row2_3', stays });
+}
+/* pose each stay from the leg's current angle: the leg-end pin is fixed on the leg, and
+   the panel end slides along its channel to wherever the stay's length puts it */
+function poseLegStays(L) {
+  const th = L.pv.rotation.x, c = Math.cos(th), sn = Math.sin(th);
+  const ly = -STAY_A, lz = 0.009 + 0.003;
+  const Ay = L.pv.position.y + ly * c - lz * sn, Az = L.pv.position.z + ly * sn + lz * c;
+  const By = -pT / 2 - 0.009;
+  for (const st of L.stays) {
+    const dy = By - Ay, rem = STAY_L * STAY_L - dy * dy;
+    let Bz = Az + Math.sqrt(Math.max(0, rem));
+    Bz = Math.min(Math.max(Bz, st.hz + 0.05), st.hz + 0.25);
+    const dz = Bz - Az, len = Math.hypot(dy, dz);
+    st.rod.position.set(st.xs, (Ay + By) / 2, (Az + Bz) / 2);
+    st.rod.rotation.x = Math.atan2(-dy, dz);
+    st.rod.scale.z = len;
+    st.slider.position.set(st.xs, By, Bz);
+  }
+}
+
+/* seat rails in the load floor, one under each leg line, running the length of the seat bay */
+const seatRails = new THREE.Group(); seatRails.name = 'van_seat_rails'; model.add(seatRails);
+{
+  const legZ = hingeA - MID_L + 0.009, z0 = legZ - 0.95, z1 = legZ + 0.55;
+  for (const sx of [-1, 1]) {
+    const side = sx < 0 ? 'left' : 'right', x = sx * MID_LEG_X;
+    for (const lip of [-1, 1])
+      box('van_seat_rail_' + side + '_lip_' + (lip < 0 ? 'a' : 'b'), 0.012, 0.004, z1 - z0, x + lip * 0.017, 0.002, (z0 + z1) / 2, M.steel, seatRails);
+    box('van_seat_rail_' + side + '_channel', 0.022, 0.002, z1 - z0, x, -0.011, (z0 + z1) / 2, M.trim_dk, seatRails);
+    for (let k = 0; k < 20; k++)   /* the rail's locking pockets, every 75 mm */
+      box('van_seat_rail_' + side + '_pocket_' + k, 0.030, 0.001, 0.010, x, 0.0045, z0 + 0.04 + k * 0.075, M.trim_dk, seatRails);
+  }
 }
 
 /* the cushions are loose: they lift off before the wood folds and go back on top after.
@@ -1757,23 +1972,30 @@ const PAD_GAP = 0.002;   /* unfolded, every pad butts its neighbours with a 1 mm
 /* the pad joint sits on the table post, so it drops between the aft and middle pads */
 const SPLIT_Z = POST_HOLE_Z, POST_GAP = 0.03;   /* with the geometry's own 30 mm inset this clears the 60 mm post */
 const AFT_END = D / 2;   /* pads run right out to the box's aft face */
-/* only the centre pad has to clear the table post — the two outer pads run the
-   full length forward to meet the middle pad, so there is no gap fore to aft.
-   The +0.03 restores what the pad geometry insets at each end. */
-const PAD_JOINT = SPLIT_Z - 0.070;   /* far enough fore that the outer aft pads' post bores sit wholly inside them */ //   /* aft pads meet the middle pad just fore of the post; the hatch pad's bored hole takes the post */
+/* the middle pad runs aft past the bedside post to its tailgate-side face, where all three
+   aft pads start. A small open notch in the middle pad's aft edge takes the post, so there
+   is no gap and no enclosed hole */
+const PAD_JOINT = SPLIT_Z + 0.025;
+const POST_PAD_Z = PAD_JOINT;
+const POST_NOTCH_W = 0.046, POST_NOTCH_D = 0.050;
 const SIDE_LEN = AFT_END - PAD_JOINT;
-const REAR_LEN = SIDE_LEN;   /* the hatch pad runs the same length — the bored hole clears the post */
+const REAR_LEN = AFT_END - POST_PAD_Z;
 const MID_LEN = PAD_JOINT - (hingeA - pL);
 const SIDE_Z = AFT_END - SIDE_LEN / 2, REAR_Z = AFT_END - REAR_LEN / 2;
 const MID_Z = PAD_JOINT - MID_LEN / 2;
 /* stacked, the pads line up on their aft edges so nothing cantilevers past the drawer fronts */
 const zs = len => hingeA + pL - len / 2;
 const cushionSpec = [
-  { tag: 'rear_a', layer: 0, w: REAR_W, x: -REAR_W, len: SIDE_LEN, z: SIDE_Z, zStack: zs(SIDE_LEN) },
-  { tag: 'rear_b', layer: 0, w: REAR_W, x: 0,        len: REAR_LEN, z: REAR_Z, zStack: zs(REAR_LEN) },
-  { tag: 'rear_c', layer: 0, w: REAR_W, x: REAR_W,   len: SIDE_LEN, z: SIDE_Z, zStack: zs(SIDE_LEN) },
+  /* three equal aft pads. The post stands in the joint between the middle pad and the
+     centre aft pad, which starts just behind it; the outer two run on to meet the middle pad */
+  ...(() => {
+    const b0 = -bedW / 2, b1 = -REAR_W / 2, b2 = REAR_W / 2, b3 = REAR_W / 2, b4 = bedW / 2;
+    const pad = (tag, a, b, len, z) => ({ tag, layer: 0, w: b - a, x: (a + b) / 2, len, z, zStack: zs(len) });
+    return [pad('rear_a', b0, b1, SIDE_LEN, SIDE_Z), pad('rear_b', b1, b2, REAR_LEN, REAR_Z), pad('rear_c', b3, b4, SIDE_LEN, SIDE_Z)];
+  })(),
   { tag: 'mid',    layer: 1, w: bedW, x: 0, len: MID_LEN, z: MID_Z,     zStack: zs(MID_LEN) },
-  { tag: 'front',  layer: 2, w: bedW, x: 0, len: pL, z: hingeA - pL * 1.5, zStack: zs(pL) },
+  { tag: 'front_left',  layer: 2, w: bedW / 2, x: -bedW / 4, len: pL, z: hingeA - pL * 1.5, zStack: zs(pL) },
+  { tag: 'front_right', layer: 2, w: bedW / 2, x: bedW / 4,  len: pL, z: hingeA - pL * 1.5, zStack: zs(pL) },
 ];
 /* the two outer aft pads are bored for the bedside post over each socket */
 function boredPad(w, d, hx, hz) {
@@ -1784,12 +2006,33 @@ function boredPad(w, d, hx, hz) {
   geo.rotateX(-Math.PI / 2); geo.translate(0, -cT / 2, 0);
   return geo;
 }
+/* pad with a rectangular open notch in its aft (tailgate-side) edge, centred at x nx */
+function aftNotchPad(w, d, nx) {
+  const sh = new THREE.Shape(), a = -d / 2, hw = POST_NOTCH_W / 2;
+  sh.moveTo(-w / 2, a); sh.lineTo(nx - hw, a); sh.lineTo(nx - hw, a + POST_NOTCH_D); sh.lineTo(nx + hw, a + POST_NOTCH_D);
+  sh.lineTo(nx + hw, a); sh.lineTo(w / 2, a); sh.lineTo(w / 2, d / 2); sh.lineTo(-w / 2, d / 2); sh.closePath();
+  const geo = new THREE.ExtrudeGeometry(sh, { depth: cT, bevelEnabled: false });
+  geo.rotateX(-Math.PI / 2); geo.translate(0, -cT / 2, 0);
+  return geo;
+}
+/* pad with a half-round notch in one long edge (side −1 left, +1 right) at z nz */
+function notchedPad(w, d, side, nz, r) {
+  const sh = new THREE.Shape(), y0 = -nz;
+  sh.moveTo(-w / 2, -d / 2); sh.lineTo(w / 2, -d / 2);
+  if (side > 0) { sh.lineTo(w / 2, y0 - r); sh.absarc(w / 2, y0, r, -Math.PI / 2, Math.PI / 2, true); }
+  sh.lineTo(w / 2, d / 2); sh.lineTo(-w / 2, d / 2);
+  if (side < 0) { sh.lineTo(-w / 2, y0 + r); sh.absarc(-w / 2, y0, r, Math.PI / 2, -Math.PI / 2, true); }
+  sh.closePath();
+  const geo = new THREE.ExtrudeGeometry(sh, { depth: cT, bevelEnabled: false, curveSegments: 20 });
+  geo.rotateX(-Math.PI / 2); geo.translate(0, -cT / 2, 0);
+  return geo;
+}
 const cushions = cushionSpec.map(s => {
-  const bore = false;   /* no post bores now the sockets are gone */
+  const notch = s.tag === 'mid';   /* open notch in its aft edge round the post */
   const c = new THREE.Mesh(
-    bore ? boredPad(s.w - PAD_GAP, s.len - PAD_GAP, (s.x < 0 ? SOCK_XL : SOCK_XR) - s.x, POST_HOLE_Z - s.z)
+    notch ? aftNotchPad(s.w - PAD_GAP, s.len - PAD_GAP, BSL_PX - s.x)
          : new THREE.BoxGeometry(s.w - PAD_GAP, cT, s.len - PAD_GAP),
-    bore ? [M.cushion_face, M.cushion_edge]
+    notch ? [M.cushion_face, M.cushion_edge]
          : [M.cushion_edge, M.cushion_edge, M.cushion_face, M.cushion_face, M.cushion_edge, M.cushion_edge]);
   c.name = 'cushion_' + s.tag;
   c.position.set(s.x, CUSHION_Y + (s.dy || 0), s.z);
@@ -1840,7 +2083,8 @@ cushionStrap.visible = false; bed.add(cushionStrap);
   };
   tube('carcass_strap_peg_right', 0.008, 0.055, (W / 2 + 0.028), T + (H - T) * 0.62 + 0.035, 0.06, M.steel, carcass, 'x');
 }
-const frontCushion = cushions[cushions.length - 1];
+const frontCushions = cushions.filter(c => c.tag.startsWith('front_'));
+for (const c of frontCushions) c.sx = c.tag === 'front_left' ? -1 : 1;
 const midAftCushion = cushions.find(c => c.tag === 'rear_b');   /* lifted out in the lounger pose */
 
 const clamp01 = v => Math.min(1, Math.max(0, v));
@@ -1863,7 +2107,15 @@ function poseMidLegs(t) {
     const up = midLegT > 0.5 ? (bedMode === 'fold') : fitted;
     const flat = (midLegT > 0.5 && bedMode === 'fold') ? -Math.PI / 2 : Math.PI / 2;
     L.pv.rotation.x = up ? flat : 0;
+    /* folded flat under the unfolded bed, the blade drops 11 mm into the pink board's
+       notch so it lies flush with the board (18 mm blade in the 16 mm board, 2 mm below) */
+    L.pv.position.y = -pT / 2 - (up && flat > 0 ? 0.011 : 0);
     L.pv.visible = true;
+    poseLegStays(L);
+  }
+  /* the van's own seat rails, left clear once the seats are out; the leg shoes drop into them */
+  if (typeof seatRails !== 'undefined') {
+    seatRails.visible = vanSolid.visible;
   }
 }
 
@@ -1873,6 +2125,7 @@ let folded = 1;
 let bedF = 1;   /* raw fold track, including the cushion lift / place phases */
 let peopleShown = false;   /* hidden until the button asks for them */
 let reclined = 0;
+const recSide = { L: 1, R: 1 };   /* how far each backrest half is up, within the lounger */
 var fitP = 1;   /* how far the box is fitted; set by setFit each frame */
 let stackPlaced = false;   /* the pads are stacked and strapped for travel */
 let hatchOut = false;   /* the middle-bay lid and the centre aft pad lift out together */
@@ -1892,6 +2145,9 @@ function applyHatch() {
   for (const s of rearFingers) s.visible = bedMode !== 'fold';
   for (const s of hatchSlats) s.visible = !out && !(bedMode === 'fold' && rearFingers.includes(s));
   for (const s of stackSlats) s.visible = !(out && folded > 0.5);   /* folded, these lie over the opening too */
+  /* green, like orange, is a slotted board in folding mode and open fingers in sliding */
+  for (const s of midFill) s.visible = bedMode === 'fold' && !(out && folded > 0.5 && midFillBay.includes(s));
+  for (const s of midFingers) if (bedMode === 'fold') s.visible = false;
   const stowedOver = out && folded > 0.5;   /* the stow stack sits right on the opening */
   for (const c of cushions) c.m.visible = !cushionsOut && !stowedOver;
   for (const s of sideCushions) s.m.visible = !cushionsOut && (bedF > 0.001 ? !stowedOver : !(bedMode === 'fold' && flapFold > 0.5));
@@ -2073,34 +2329,61 @@ function setFlaps(g) {
   applyHatch();
 }
 
-/* r = 0 flat, 1 backrest up at 45° — the cab-end panel is the one that rises */
+/* r = 0 flat, 1 backrest up. The prop is a fixed length and its foot drops into one of
+   the gaps between the pink board's slats; each gap gives a different backrest angle. */
 const RECLINE = Math.PI / 4;
+const PROP_FOOT_Y = -OVL - pT / 2 + 0.002;   /* foot tip sits just above the gap's floor */
+const propHinge = th => [-BR_LEG_Z * Math.sin(th) - (pT / 2) * Math.cos(th),
+                         BR_LEG_Z * Math.cos(th) - (pT / 2) * Math.sin(th)];
+const SLAT_GAPS = [1, 2, 3, 4].map(i => -pL + (pL / 5) * i);   /* gap centres, pivotB z */
+const PROP_L = (() => {   /* sized so the middle gap gives the 45° backrest */
+  const [hy, hz] = propHinge(RECLINE), gz = SLAT_GAPS.reduce((a, g) => Math.abs(g - hz) < Math.abs(a - hz) ? g : a);
+  return Math.hypot(hy - PROP_FOOT_Y, hz - gz);
+})();
+const REC_ANGLES = [];   /* [angle, gap z] for every gap the prop can reach */
+for (const gz of SLAT_GAPS) {
+  let prev = null;
+  for (let th = 0.2; th <= 1.25; th += 0.002) {
+    const [hy, hz] = propHinge(th), d = Math.hypot(hy - PROP_FOOT_Y, hz - gz) - PROP_L;
+    if (prev !== null && prev < 0 && d >= 0 && hz - gz > -0.02) { REC_ANGLES.push([th, gz]); break; }
+    prev = d;
+  }
+}
+REC_ANGLES.sort((a, b) => a[0] - b[0]);
+let recIdx = REC_ANGLES.findIndex(a => Math.abs(a[0] - RECLINE) < 0.02);
+if (recIdx < 0) recIdx = 0;
+let recAngCur = REC_ANGLES[recIdx][0], recAngFrom = recAngCur;
 function setRecline(r) {
-  const th = RECLINE * r;
+  const th = recAngCur * r;
   reclined = r;
   if (r >= 0.5 && reclinePrev < 0.5) hatchOut = true;   /* rising into the lounger takes the panel out once */
   reclinePrev = r;
-  frontPivot.rotation.x = th;
+  const thS = { '-1': th * recSide.L, '1': th * recSide.R };
+  frontPivot.rotation.x = thS[-1];
+  frontPivotR.rotation.x = thS[1];
   for (const pv of brLegs) {
-    const boardTop = -OVL + pT / 2;   /* top face of the overlay board it stands on */
-    /* hinge position in pivotB space, and the lean we want at this angle */
-    const hy = -BR_LEG_Z * Math.sin(th) - (pT / 2) * Math.cos(th);
-    const world = -Math.PI / 2 * (1 - r);   /* 0 = straight down, -π/2 = folded flat */
-    const gap = hy - boardTop;
-    const len = (gap > 0.005 && Math.cos(world) > 0.01) ? gap / Math.cos(world) : BR_LEG_L;
+    const th = thS[pv.userData.sx], r = th / recAngCur;
+    /* the prop swings down from flat under the backrest and its foot finds the gap
+       the backrest angle belongs to: the gap is where the foot lands at this angle */
+    const [hy, hz] = propHinge(th);
+    const gz = hz - Math.sqrt(Math.max(0, PROP_L * PROP_L - (hy - PROP_FOOT_Y) ** 2));
+    const land = Math.atan2(-(gz - hz), -(PROP_FOOT_Y - hy));
+    const world = -Math.PI / 2 + (land + Math.PI / 2) * r;   /* -π/2 = folded flat */
     pv.rotation.x = world - th;
-    pv.scale.y = Math.min(1, len / BR_LEG_L);
+    pv.scale.y = PROP_L / BR_LEG_L;
     pv.visible = folded < 0.5 && r > 0.001;
   }
   for (const g of occupants) g.visible = peopleShown && folded < 0.02;
   legs.visible = folded < 0.8 && r < 0.5;   /* the far pair has nothing to stand under once the panel is up */
   applyHatch();
   if (folded > 0.001) return;   /* folded away — setFold owns the cushion stack */
-  const c = frontCushion;
   const arm = pL / 2, off = pT / 2 + cT / 2 + 0.002;
-  c.m.rotation.x = th;
-  c.m.position.z = hingeA - pL + off * Math.sin(th) - arm * Math.cos(th);
-  c.m.position.y = bedY + c.dy * (1 - r) + off * Math.cos(th) + arm * Math.sin(th);
+  for (const c of frontCushions) {
+    const t = thS[c.sx], rr = t / recAngCur;
+    c.m.rotation.x = t;
+    c.m.position.z = hingeA - pL + off * Math.sin(t) - arm * Math.cos(t);
+    c.m.position.y = bedY + c.dy * (1 - rr) + off * Math.cos(t) + arm * Math.sin(t);
+  }
   overlayPanel.visible = bedMode === 'fold' || folded < 0.5;   /* the extension board lifts out before the bed stows */
   overlayLegs.visible = r >= 0.5;   /* only needed once the panel below has risen */
 }
@@ -2332,6 +2615,9 @@ const anim = {
   flaps:  { p: 1, target: 1, ms: 900, apply: p => setFlaps(ease(p)) },
   seats:  { p: 0, target: 0, ms: 1400, apply: p => setSeatBacks(ease(p)) },
   recline: { p: 0, target: 0, ms: 1200, apply: p => setRecline(ease(p)) },
+  recA: { p: 1, target: 1, ms: 900, apply: p => { recAngCur = recAngFrom + (REC_ANGLES[recIdx][0] - recAngFrom) * ease(p); setRecline(reclined); } },
+  recL: { p: 1, target: 1, ms: 1000, apply: p => { recSide.L = ease(p); setRecline(reclined); } },
+  recR: { p: 1, target: 1, ms: 1000, apply: p => { recSide.R = ease(p); setRecline(reclined); } },
   fit: { p: 0, target: 0, ms: 3200, apply: p => { if (fitReady) setFit(p); } },
   doors:  { p: 0, target: 0, ms: 1600, apply: p => {
     const e = ease(p);
@@ -2347,7 +2633,9 @@ const anim = {
 /* the bed can only come down onto folded seat backs, and the backs can
    only come up again once the bed is folded away */
 anim.bed.gate = () => anim.bed.target === 1
-  || (anim.seats.p === 1 && (cushionsOut || anim.strap.p === 1));
+  || (anim.seats.p === 1 && (cushionsOut || anim.strap.p === 1)
+      && (!leafMode || anim.fleaf.p === 1)   /* and the table's leaves are folded up */
+      && Math.abs(tblH - (TBL_H_BED - (leafMode ? FOLD_PROUD : 0))) < 0.0005);   /* and it has wound down to take the board */
 anim.strap.gate = () => anim.strap.target === 1 || anim.bed.p === 1;
 tstowTrack = anim.tstow;
 tstowTrack.p = tstowTrack.target = stowP;
@@ -2756,6 +3044,8 @@ const loungeBtn = document.getElementById('lounge-toggle');
 if (loungeBtn) loungeBtn.addEventListener('click', () => {
   stopDemo();
   anim.recline.target = anim.recline.target ? 0 : 1;
+  anim.recL.target = anim.recR.target = 1;   /* the lounger always comes up with both backrests raised */
+  labels();
   hatchOut = anim.recline.target === 1;   /* the lounger comes with the panel out, but it can be refitted */
   applyHatch();
   if (anim.recline.target === 1) {   /* the bed has to be down and flat first */
@@ -2767,14 +3057,23 @@ if (loungeBtn) loungeBtn.addEventListener('click', () => {
   labels();
 });
 
+{
+  const b = document.getElementById('recline-angle-toggle');
+  if (b) b.addEventListener('click', () => {
+    stopDemo();
+    recAngFrom = recAngCur;
+    recIdx = (recIdx + 1) % REC_ANGLES.length;
+    anim.recA.p = 0; anim.recA.target = 1;
+    labels();
+  });
+}
+for (const [id, k] of [['recline-left-toggle', 'recL'], ['recline-right-toggle', 'recR']]) {
+  const b = document.getElementById(id);
+  if (b) b.addEventListener('click', () => { stopDemo(); anim[k].target = anim[k].target ? 0 : 1; labels(); });
+}
 const hatchBtn = document.getElementById('hatch-toggle');
 if (hatchBtn) hatchBtn.addEventListener('click', () => {
   hatchOut = !hatchOut;
-  /* refitting the panel means the lounger table's leg has to come out of the bay first */
-  if (!hatchOut && anim.recline.target === 1 && !tableStowed) {
-    tableStowed = true;
-    if (leafMode) { leafStep = 3; leafFolded = true; }
-  }
   applyTableMode();
   applyHatch();
   labels();
@@ -2977,6 +3276,20 @@ function labels() {
   if (db) db.textContent = anim.doors.target ? 'Close doors' : 'Open doors';
   if (bedBtn) bedBtn.textContent = anim.bed.target === 1 ? 'Unfold bed' : 'Fold bed';
   if (loungeBtn) loungeBtn.textContent = anim.recline.target ? 'Flat bed' : 'Lounger';
+  for (const [id, k, nm] of [['recline-left-toggle', 'recL', 'left'], ['recline-right-toggle', 'recR', 'right']]) {
+    const b = document.getElementById(id);
+    if (!b) continue;
+    b.textContent = (anim[k].target ? 'Lower ' : 'Raise ') + nm + ' backrest';
+    b.style.display = (anim.recline.target === 1 && !b.dataset.boxHidden) ? '' : 'none';
+  }
+  {
+    const b = document.getElementById('recline-angle-toggle');
+    if (b) {
+      const deg = a => Math.round(a[0] * 180 / Math.PI);
+      b.textContent = 'Backrest ' + deg(REC_ANGLES[recIdx]) + '° → ' + deg(REC_ANGLES[(recIdx + 1) % REC_ANGLES.length]) + '°';
+      b.style.display = (anim.recline.target === 1 && REC_ANGLES.length > 1 && !b.dataset.boxHidden) ? '' : 'none';
+    }
+  }
   if (hatchBtn) {
     const stowed = anim.bed.target === 1;   /* the panel stays in under the folded bed */
     hatchBtn.disabled = stowed;
@@ -3161,14 +3474,22 @@ function applyTableMode() {
   /* the pedestal stands at dining height with the bed folded, and drops to bed
      height when the bed comes down so the panels land on it */
   /* raise only once the bed has finished folding; drop as soon as it starts coming down */
-  tblH = (anim.bed.target === 1 && anim.bed.p > 0.999) ? TBL_H_HI : TBL_H_BED;
+  /* with the bed down the pink board rests on the table top. Folded, the leaves sit
+     27 mm proud of the centre panel, so the pedestal drops that much further. The
+     post winds down slowly rather than jumping. */
+  const bedDown = !(anim.bed.target === 1 && anim.bed.p > 0.999);
+  tblHTarget = bedDown ? TBL_H_BED - (leafMode ? FOLD_PROUD * foldP : 0) : TBL_H_HI;
+  const step = 0.0016;   /* per frame, ~0.1 m/s */
+  const prevH = tblH;
+  tblH = Math.abs(tblHTarget - tblH) <= step ? tblHTarget : tblH + Math.sign(tblHTarget - tblH) * step;
+  if (tblH !== prevH && typeof poseTable === 'function') poseTable();
   tableProps.position.y = tblH - TBL_H;   /* the cards and wine ride with the top */
   /* the bedside table is its own piece now — it comes out with the lounger
      whether or not the main table is standing. In the lounger, stowing takes
      only the lounger table away: the main table stays set up under the seat. */
   const lounger = anim.recline.target === 1;
   const mainStowed = tableStowed && !lounger;
-  const bedside = lounger && !tableStowed && hatchOut;   /* the leg stands in the hatch bay, so the panel must be out */
+  const bedside = lounger && !tableStowed;   /* the post drops through the hatch panel's bore, fitted or not */
   /* the bed and the lounger both land on the table, so it must be whole — both
      halves down, nothing lifted off or sent to the bedside pose */
   const full = anim.bed.target === 0 || lounger;
@@ -3185,6 +3506,8 @@ function applyTableMode() {
   }
   if (full) anim.leaf.target = 0;
   /* the leaves fold on their own button, and always as the table goes away */
+  /* the bed comes down onto the table, so the leaves always fold up first */
+  if (leafMode && anim.bed.target === 0 && !leafFolded) { leafFolded = true; leafStep = 1; }
   anim.fleaf.target = (leafMode && (mainStowed || leafFolded)) ? 1 : 0;
 
   /* the table is the van's, not the box's — it stays in the van, stowed or not */
@@ -3208,8 +3531,6 @@ function cycleTable() {
     leafFolded = leafStep === 1 || leafStep === 3;
   }
   if (!tableStowed) anim.doors.target = 1;   /* nothing goes in through a shut door */
-  /* the lounger table's leg stands in the hatch bay, so setting it up takes the panel out */
-  if (anim.recline.target === 1 && !tableStowed && !hatchOut) { hatchOut = true; applyHatch(); labels(); }
   applyTableMode();
   updateVisBox();
   refreshTableLabels();
@@ -3309,7 +3630,7 @@ function applyView() {
   poseTable();   /* the stowed bedside table hides with the box out */
   /* box-only controls have nothing to act on once the box is out */
   for (const id of ['drawer-toggle', 'bed-toggle', 'bedmode-toggle', 'lounge-toggle',
-                    'hatch-toggle', 'cushions-toggle']) {
+                    'hatch-toggle', 'cushions-toggle', 'recline-left-toggle', 'recline-right-toggle', 'recline-angle-toggle']) {
     const b = document.getElementById(id);
     if (!b) continue;
     b.dataset.boxHidden = boxOut ? '1' : '';

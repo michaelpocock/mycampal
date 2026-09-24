@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>myCampal — Ford Tourneo Custom</title>
-<link rel="stylesheet" href="assets/ds-styles.css?v2.8.0-1790254776879">
+<link rel="stylesheet" href="assets/ds-styles.css?v2.9.0-1790288372729">
 <script type="importmap">
 {
   "imports": {
@@ -101,6 +101,19 @@
   #features dd{margin:0;font-size:14px;line-height:1.45;color:color-mix(in srgb, var(--color-text) 78%, transparent);text-wrap:pretty}
   #features h3{font-family:var(--font-heading);font-size:13px;letter-spacing:.08em;text-transform:uppercase;margin:var(--space-6) 0 var(--space-3);padding-bottom:6px;border-bottom:1px solid var(--color-neutral-300);color:var(--color-accent)}
   #features dt .n{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;margin-right:7px;border-radius:50%;background:var(--color-accent);color:var(--color-bg);font-size:12px;vertical-align:1px}
+  #features .shot{display:block;width:calc(50% - var(--space-2) / 2);aspect-ratio:4/3;object-fit:cover;border-radius:var(--radius-md,8px);border:1px solid var(--color-neutral-200);margin:0 0 var(--space-2);background:#fff}
+  #features .shot-pair{display:grid;grid-template-columns:1fr 1fr;gap:var(--space-2);margin:0 0 var(--space-2)}
+  #features .shot-pair figure{margin:0}
+  #features .shot-pair .shot{margin:0 0 4px;width:100%}
+  #features .shot-pair figcaption{font-size:12px;line-height:1.3;color:color-mix(in srgb, var(--color-text) 70%, transparent)}
+  #features .tbl-feature{display:grid;gap:var(--space-3);margin:0 0 var(--space-5)}
+  /* same size as a picture in a two-up pair inside a feature column */
+  #features .tbl-strip{display:grid;gap:var(--space-2);grid-template-columns:repeat(auto-fill,minmax(130px,180px))}
+  #features .tbl-strip figure{margin:0}
+  #features .tbl-strip .shot{margin:0 0 6px;width:100%}
+  #features .tbl-strip figcaption{font-size:12px;line-height:1.35;color:color-mix(in srgb, var(--color-text) 70%, transparent);text-wrap:pretty}
+  #features .tbl-strip figcaption b{display:block;font-family:var(--font-heading);font-weight:600;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#000;margin-bottom:1px}
+  #features .tbl-copy{max-width:68ch}
   #features .dl-row{display:flex;flex-wrap:wrap;gap:var(--space-2)}
   #features .foot{display:flex;justify-content:flex-end;margin-top:var(--space-6)}
   @media (max-width:760px){
@@ -214,7 +227,7 @@
     </div>
     <button id="features-toggle" class="btn btn-secondary" type="button">Key features</button>
     <button id="menu-toggle" class="btn btn-secondary" type="button" aria-expanded="false" aria-controls="legend">Controls</button>
-    <span class="tag tag-outline" style="order:99;align-self:flex-start;margin-top:-4px;margin-left:-86px">v2.8.0</span>
+    <span class="tag tag-outline" style="order:99;align-self:flex-start;margin-top:-4px;margin-left:-86px">v2.9.0</span>
     <div class="legend" id="legend">
       <div class="sheet-head">
         <span class="grab"></span>
@@ -229,6 +242,9 @@
           <button id="drawer-toggle" class="btn btn-secondary" type="button">Open drawers</button>
           <button id="bed-toggle" class="btn btn-secondary" type="button">Unfold bed</button>
           <button id="lounge-toggle" class="btn btn-secondary" type="button">Lounger</button>
+          <button id="recline-left-toggle" class="btn btn-secondary" type="button" style="display:none">Lower left backrest</button>
+          <button id="recline-right-toggle" class="btn btn-secondary" type="button" style="display:none">Lower right backrest</button>
+          <button id="recline-angle-toggle" class="btn btn-secondary" type="button" style="display:none">Backrest angle</button>
           <button id="table-toggle" class="btn btn-secondary" type="button">Stow table</button>
           <button id="swivel-toggle" class="btn btn-secondary" type="button" style="display:none">Swing table to centre</button>
           <button id="hatch-toggle" class="btn btn-secondary" type="button">Remove hatch panel</button>
@@ -289,9 +305,9 @@
     </figure>
   </div>
 </div>
-<script src="./image-slot.js?v2.8.0-1790254776879"></script>
-<script src="./three-d-stage.js?v2.8.0-1790254776879"></script>
-<script type="module" src="./camping-box-model.js?v2.8.0-1790254776879"></script>
+<script src="./image-slot.js?v2.9.0-1790288372729"></script>
+<script src="./three-d-stage.js?v2.9.0-1790288372729"></script>
+<script type="module" src="./camping-box-model.js?v2.9.0-1790288372729"></script>
 <script>
   /* delegated from the document so it works however the page is loaded */
   (function () {
@@ -360,46 +376,77 @@
     <h3>Sleeping</h3>
     <dl>
       <div>
+        <img class="shot" src="assets/bed/bed-flat.png" alt="Bed unfolded flat, 2000 mm, with the wings out" loading="lazy">
         <dt>Bed, 2000 mm</dt>
         <dd>Panels run out over the drawers, with the far end resting either on the folded seat backs where the seats are still fitted, or on the fold-out legs and the top of the main table where they are not. Side wings fold down to 1550 mm across.</dd>
       </div>
       <div>
+        <div class="shot-pair">
+          <figure><img class="shot" src="assets/bed/lounger-both.png" alt="Lounger with both backrest halves raised" loading="lazy"><figcaption>Both backrests up</figcaption></figure>
+          <figure><img class="shot" src="assets/bed/lounger-one.png" alt="Lounger with one backrest half raised and the other flat" loading="lazy"><figcaption>One side up, one flat</figcaption></figure>
+        </div>
         <dt>Lounger</dt>
-        <dd>The forward panel lifts on a ply prop into a backrest, with the overlay board staying flat beneath it.</dd>
+        <dd>The forward panel is split down the centreline, and each half lifts on its own ply prop into a backrest, so one side can sit up while the other stays flat. The overlay board stays flat beneath them.</dd>
       </div>
     </dl>
     <h3>Drawers</h3>
     <dl>
       <div>
+        <img class="shot" src="assets/drawers/drawer-1-open.png" alt="Kitchen drawer open" loading="lazy">
         <dt><span class="n">1</span>Kitchen drawer</dt>
         <dd>Twin-burner stove on the upper deck with a windshield, a fold-down side table front, and a side-opening tray at full extension. The tray is split into three by two loose lengthwise dividers that tip up and draw out.</dd>
       </div>
       <div>
+        <img class="shot" src="assets/drawers/drawer-2-open.png" alt="Storage drawer open" loading="lazy">
         <dt><span class="n">2</span>Storage drawer</dt>
         <dd>Deep open crate with hand-hole cut-outs, 240 mm high. Two removable full-width dividers drop between cleats at any of three depths.</dd>
       </div>
       <div>
+        <img class="shot" src="assets/drawers/drawer-3-open.png" alt="Prep drawer open" loading="lazy">
         <dt><span class="n">3</span>Prep drawer</dt>
         <dd>Two lift-off ply lids: chopping boards one way up, steel trivet bars on the reverse. Beneath them, two removable cross dividers drop between cleats, with room for three mugs in the middle compartment.</dd>
       </div>
       <div>
+        <div class="shot-pair">
+          <figure><img class="shot" src="assets/drawers/drawer-4-open.png" alt="Fridge drawer open off the tailgate" loading="lazy"><figcaption>Tailgate end: drawer open</figcaption></figure>
+          <figure><img class="shot" src="assets/drawers/drawer-4-cab-end.png" alt="Fridge rolled out of the cab end with the drawer back lifted out" loading="lazy"><figcaption>Cab end: back lifted out, fridge rolled out</figcaption></figure>
+        </div>
         <dt><span class="n">4</span>Fridge drawer</dt>
         <dd>Compressor fridge on four wheels, running out off the tailgate behind a latched front. The drawer's 150 mm sides keep the fridge easy to reach, and its back lifts out of two channels so the fridge can be rolled out of the cab end from inside the van.</dd>
       </div>
       <div>
+        <img class="shot" src="assets/drawers/drawer-5-open.png" alt="Middle-bay door slid out" loading="lazy">
         <dt><span class="n">5</span>Middle-bay door</dt>
         <dd>Lifts out on a hand hole at the top edge, then slides into runner channels at either of two heights — half in, half proud. Three steel bars across its face take a hot pan.</dd>
       </div>
     </dl>
+    <h3>Tables</h3>
+    <div class="tbl-feature">
+      <div class="tbl-strip three">
+        <figure><img class="shot" src="assets/tables/leaf-unfolded.png" alt="Leaf table set up with both leaves open" loading="lazy"><figcaption><b>Open</b> Both leaves out on two posts</figcaption></figure>
+        <figure><img class="shot" src="assets/tables/leaf-folded.png" alt="Leaf table with both leaves folded over onto the centre panel" loading="lazy"><figcaption><b>Folded</b> Leaves meet on the centreline</figcaption></figure>
+        <figure><img class="shot" src="assets/tables/leaf-half.png" alt="Half of the split leaf table standing on one post" loading="lazy"><figcaption><b>Half</b> One half on one post, four seats out</figcaption></figure>
+      </div>
+      <div class="tbl-copy">
+        <dt>Fold-out leaf table</dt>
+        <dd>Pedestal table on two posts for the seating bay: a fixed centre panel with a leaf hinged along each long edge, folding up and over to meet on the centreline. It splits across the width into two halves, joined by toggle latches underneath, so half of it stands on one post when the second row of seats is out. It stows behind the cab, lifting clear of the seat backs on the way.</dd>
+      </div>
+    </div>
+    <div class="tbl-feature">
+      <div class="tbl-strip two">
+        <figure><img class="shot" src="assets/tables/bedside-side.png" alt="Bedside table on its swivel arm, swung out to one side over the lounger" loading="lazy"><figcaption><b>Beside</b> Arm swung out to one side</figcaption></figure>
+        <figure><img class="shot" src="assets/tables/bedside-centre.png" alt="Bedside table swung round towards the centre of the lounger" loading="lazy"><figcaption><b>Across</b> Swung round over the bed</figcaption></figure>
+      </div>
+      <div class="tbl-copy">
+        <dt>Swivel-arm bedside table</dt>
+        <dd>A square post drops into a clamp bracket on the right-hand divider at the cab end of the hatch bay, and a horizontal arm on the post head swings the top left, aft or right over the bed. The hatch panel is bored for the post, so it can stay fitted or come out. Stowed, the top and the leg clip flat to the cab-end face.</dd>
+      </div>
+    </div>
     <h3>Elsewhere in the box</h3>
     <dl>
       <div>
         <dt>Through-bay webbing</dt>
         <dd>Elastic cord crossing between the bay dividers on D-rings and karabiners, so a load is held in at the cab end and unclips in one pull. The bay stays open front and back for gear passed through from the cab.</dd>
-      </div>
-      <div>
-        <dt>Tables</dt>
-        <dd>Fold-out leaf pedestal table on two posts for the seating bay: a fixed centre panel with a leaf hinged along each long edge, folding up and over to meet on the centreline; it splits across the width into two halves, joined by toggle latches underneath, so half of it stands on one post when the second row of seats is out. It stows behind the cab, lifting clear of the seat backs on the way. The bedside table sits on a swivel-arm leg: a square post drops into a clamp bracket on the right-hand divider at the cab end of the hatch bay, and a horizontal arm on the post head swings the top left, aft or right over the bed. The hatch panel comes out to set it up. Stowed, the top and the leg clip flat to the cab-end face.</dd>
       </div>
       <div>
         <dt>Travel mode</dt>
@@ -408,7 +455,7 @@
     </dl>
     <h3>Downloads</h3>
     <div class="dl-row">
-      <a class="btn btn-secondary" href="cut-plan.html?v2.8.0-1790254776879">Cut plan</a>
+      <a class="btn btn-secondary" href="cut-plan.html?v2.9.0-1790288372729">Cut plan</a>
       <a class="btn btn-secondary" href="assets/chasing-tides-badge-200mm.svg" download>Badge 200 mm (SVG)</a>
       <a class="btn btn-secondary" href="assets/chasing-tides-badge-200mm.eps" download>Badge 200 mm (EPS)</a>
     </div>
