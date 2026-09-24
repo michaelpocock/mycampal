@@ -361,10 +361,7 @@ const tPost = tube('table_post', 0.030, POST_LEN, 0, 0, 0, M.steel, tableParts, 
 const tFoot = roundPlate('table_foot_plate', 0.16, 0.16, 0.012, 0.045, M.steel, tableParts);
 const tPost2 = tube('table_post_2', 0.030, POST_LEN, 0, 0, 0, M.steel, tableParts, 'y');
 const tFoot2 = roundPlate('table_foot_plate_2', 0.16, 0.16, 0.012, 0.045, M.steel, tableParts);
-/* the posts lift out; the plates they socket into stay put — two screwed to the
-   floor board, a third fixed in the middle bay for the bedside pose */
-const bsFoot = roundPlate('table_foot_plate_bedside', 0.16, 0.16, 0.012, 0.045, M.steel, tableParts);
-const bsFoot2 = roundPlate('table_foot_plate_bedside_right', 0.16, 0.16, 0.012, 0.045, M.steel, tableParts);
+/* the posts lift out; the plates they socket into stay screwed to the floor board */
 
 /* poses: set up on its board, stowed behind the seats, or — for half B alone —
    up on the wheel-arch top as a bedside table when the lounger is out */
@@ -379,14 +376,31 @@ const lerp = (a, b, t) => a + (b - a) * t;
    flat against the aft face of the camping box until the lounger is set up */
 const bsTable = new THREE.Group(); bsTable.name = 'bedside_table'; tableParts.add(bsTable);
 roundPlate('bedside_top', 0.42, 0.34, 0.018, 0.06, M.ply, bsTable);
-box('bedside_top_plate', 0.14, 0.012, 0.14, 0, -0.015, 0, M.steel, bsTable);
-const bsPost = tube('bedside_post', 0.026, BS_LEN, 0, 0, 0, M.steel, tableParts, 'y');
+box('bedside_top_plate', 0.20, 0.008, 0.26, 0, -0.013, 0, M.stove, bsTable);   /* slide plate the arm clamps under */
+/* swivel-arm leg: a square post that drops into a bracket on the cab-end rail of the
+   hatch bay, with a horizontal arm that swings on the post head and carries the top */
+const BSL_POST = 0.47, BSL_ARM = 0.30;
+const BSL_PX = (W - 4 * T) / 6 - 0.06;   /* post centre, just inboard of the right-hand divider (bayW / 2 − 60 mm; bayW is declared later) */
+const BSL_X = BSL_PX - TBLX, BSL_Z = (POST_HOLE_Z + BOXZ) - TBLZ, BSL_Y = BEDSIDE_TOP_Y - 0.067 - BSL_POST;
+const bsLeg = new THREE.Group(); bsLeg.name = 'bedside_leg'; tableParts.add(bsLeg);
+box('bedside_leg_post', 0.04, BSL_POST, 0.04, 0, BSL_POST / 2, 0, M.stove, bsLeg);
+box('bedside_leg_post_cap', 0.044, 0.006, 0.044, 0, 0.003, 0, M.stove, bsLeg);
+const bsArm = new THREE.Group(); bsArm.name = 'bedside_leg_swivel'; bsArm.position.y = BSL_POST; bsLeg.add(bsArm);
+tube('bedside_leg_swivel_hub', 0.03, 0.05, 0, 0.025, 0, M.stove, bsArm, 'y');
+tube('bedside_leg_swivel_knob', 0.014, 0.012, 0, 0.056, 0, M.steel, bsArm, 'y');
+box('bedside_leg_arm', 0.04, 0.05, BSL_ARM + 0.06, 0, 0.025, BSL_ARM / 2, M.stove, bsArm);
+box('bedside_leg_swivel_lever', 0.08, 0.02, 0.02, -0.06, 0.03, 0.012, M.stove, bsArm);
+tube('bedside_leg_swivel_lever_grip', 0.013, 0.03, -0.105, 0.03, 0.012, M.stove, bsArm, 'x');
+box('bedside_leg_slide_lever', 0.02, 0.02, 0.10, -0.032, 0.014, BSL_ARM * 0.6, M.stove, bsArm);
+tube('bedside_leg_slide_lever_grip', 0.013, 0.026, -0.032, 0.014, BSL_ARM * 0.6 - 0.06, M.stove, bsArm, 'x');
+/* stowed, the leg lies flat along the cab-end face: post across the middle bay,
+   arm swung down beside the stowed top */
+const BSL_STOW_X = 0.30 - TBLX, BSL_STOW_Y = 0.50;
 /* stowed: clipped flat to the cab-end face of the box, on the drawer-bay side,
    portrait so it stays inside the bay width; the leg stands beside it, collapsed */
 const FORE_FACE = BOXZ - D / 2;
 const BSS_X = -0.410 - TBLX, BSS_Y = 0.290, BSS_Z = (FORE_FACE - 0.011) - TBLZ;
-const BSP_STOW_X = -0.214 - TBLX, BSP_STOW_Y = 0.285, BSP_STOW_Z = (FORE_FACE - 0.030) - TBLZ;
-const BSP_STOW_LEN = BS_LEN;   /* the short post stows at its own length */
+const BSL_STOW_Z = (FORE_FACE - 0.035) - TBLZ;
 
 let tblStow = false, tblBedside = false, remP = 0, bsP = 0, bs2P = 0, stowP = 0;
 var bsHideStowed = true;   /* the van starts empty, so the stowed bedside table is hidden */
@@ -424,28 +438,26 @@ function poseTable() {
   halfB.g.rotation.x = brx; halfB.g.position.set(bx, by, bz);
   halfB.plate.visible = brx > -0.1;
   tPost2.scale.set(psx, psy, psx); tPost2.position.set(px, py, pz);
-  /* --- the bedside table: its own top and post, off the box's aft face --- */
-  const b2 = bsP;
-  bsTable.rotation.x = -Math.PI / 2 * (1 - b2);
-  bsTable.rotation.y = -Math.PI / 2 * (1 - b2);   /* portrait while clipped to the drawer front */
-  /* the stowed table is clipped to the box, so it travels in with it */
-  const ride = 1 - b2;
-  /* set up, the post drops into either socket — left or right, on top of the box */
-  const bsZ = BS_Z, bsX = lerp(BS_X1, BS_X2, bs2P), hop = 0.12 * Math.sin(Math.PI * bs2P);
-  bsTable.position.set(lerp(BSS_X, bsX, b2),
-    lerp(BSS_Y, BEDSIDE_TOP_Y, b2) + 0.14 * Math.sin(Math.PI * b2) + hop * b2 + fitOffY * ride,
-    lerp(BSS_Z, bsZ, b2) + fitOffZ * ride);
-  bsPost.rotation.z = 0;   /* the leg stows upright beside the top, collapsed */
-  bsPost.scale.y = lerp(BSP_STOW_LEN / BS_LEN, 1, b2);
-  bsPost.position.set(lerp(BSP_STOW_X, bsX, b2),
-    lerp(BSP_STOW_Y, BS_BASE_Y + 0.012 + BS_LEN / 2, b2) + hop * b2 + fitOffY * ride,
-    lerp(BSP_STOW_Z, bsZ, b2) + fitOffZ * ride);
-  bsFoot.visible = bsFoot2.visible = b2 > 0.02;
+  /* --- the bedside table: lifts off the cab-end face, rises over the bed, drops
+     its post into the hatch-bay bracket, and swings on the arm --- */
+  const b2 = bsP, ride = 1 - b2;
+  const th = (bs2P - 0.5) * Math.PI;   /* swivel: 0 left · 0.5 aft · 1 right */
+  bsArm.rotation.y = th;
+  const r = tblSm(b2 / 0.35), m = tblSm((b2 - 0.25) / 0.5), d = tblSm((b2 - 0.75) / 0.25);
+  const upY = BSL_Y + 0.62;   /* held clear above the bed until it is over the bracket */
+  const legY = lerp(BSL_STOW_Y, upY, r) - (upY - BSL_Y) * d;
+  bsLeg.rotation.z = Math.PI / 2 * (1 - m);
+  bsLeg.position.set(lerp(BSL_STOW_X, BSL_X, m), legY + fitOffY * ride, lerp(BSL_STOW_Z, BSL_Z, m) + fitOffZ * ride);
+  const tx = BSL_X + Math.sin(th) * BSL_ARM, tz = BSL_Z + Math.cos(th) * BSL_ARM, ty = legY + BSL_POST + 0.067;
+  bsTable.rotation.x = -Math.PI / 2 * (1 - m);
+  bsTable.rotation.y = lerp(-Math.PI / 2, th, m);
+  bsTable.position.set(lerp(BSS_X, tx, m), lerp(lerp(BSS_Y, BSS_Y + 0.70, r), ty, m) + fitOffY * ride,
+    lerp(BSS_Z, tz, m) + fitOffZ * ride);
   /* stowed on the box's cab-end face — not shown at all while the box is out of the van.
      Read from a hoisted flag, so poseTable never reaches forward to a later binding. */
   const hideBs = b2 < 0.02 && bsHideStowed;
   bsTable.visible = !hideBs;
-  bsPost.visible = !hideBs;
+  bsLeg.visible = !hideBs;
 }
 /* the leaf top lives in the same place as the tier-drop one and rides the same
    posts, so only one of the two is ever in the van */
@@ -492,7 +504,7 @@ function setTableStowed(stowed, bedside) {
 function setTableTravel(p) { stowP = p; poseTable(); }
 function setHalfBOut(p) { remP = p; poseTable(); }        /* lifted off for the two-seat layout */
 function setBedsideMove(p) { bsP = p; poseTable(); }      /* half B travelling to the bedside pose */
-function setBedsidePos(p) { bs2P = p; poseTable(); }     /* 0 cab-end socket · 1 centre socket */
+function setBedsidePos(p) { bs2P = p; poseTable(); }     /* arm swivel: 0 left · 0.5 aft · 1 right */
 tFoot.position.set(TOPDX - LEGDX, 0.036, 0);
 tFoot2.position.set(TOPDX + LEGDX, 0.036, 0);
 
@@ -568,12 +580,6 @@ const divX = bayW / 2 + T / 2;
 /* ---- carcass ---- */
 const carcass = new THREE.Group(); carcass.name = 'carcass'; model.add(carcass);
 box('carcass_floor', W, T, D, 0, T / 2, 0, M.ply, carcass);
-/* the bedside socket plate is screwed to the camping box's own floor, inside the
-   middle bay, so it travels with the box rather than the van */
-carcass.add(bsFoot);
-bsFoot.position.set(SOCK_XL, H - 0.006, POST_HOLE_Z);
-carcass.add(bsFoot2);
-bsFoot2.position.set(SOCK_XR, H - 0.006, POST_HOLE_Z);
 /* hand-sized carry slots, two high two low at each end of both side panels */
 const SLOT_L = 0.12, SLOT_H = 0.034, SLOT_INSET = 0.055;
 /* cable exits for the fridge: round holes in the right-hand side at fridge-bay
@@ -754,13 +760,24 @@ box('cleat_right', 0.05, 0.03, D - 0.10,  W / 2 - 0.06, 0.0155, 0, M.steel, carc
         ex, cy, panelOut - 0.004, M.latch, carcass);
     }
   }
-  /* cradle clips for the collapsed leg, just inboard of the top */
-  for (const [lvl, cy] of [['upper', 0.455], ['lower', 0.125]]) {
-    box('table_stow_leg_clip_' + lvl, 0.022, 0.024, 0.058,
-      -0.214, cy, faceZ - 0.029, M.steel, carcass);
-    box('table_stow_leg_catch_' + lvl, 0.060, 0.016, 0.008,
-      -0.214, cy, faceZ - 0.062, M.latch, carcass);
+  /* cradle clips for the swivel leg lying across the face: one on the post over the right bay, one on the arm */
+  for (const [tag, cx, cy] of [['post_right', 0.25, 0.50], ['arm', -0.198, 0.26]]) {
+    box('table_stow_leg_clip_' + tag, 0.022, 0.024, 0.058, cx, cy, faceZ - 0.029, M.steel, carcass);
+    box('table_stow_leg_catch_' + tag, 0.016, 0.060, 0.008, cx, cy, faceZ - 0.062, M.latch, carcass);
   }
+}
+/* ---- bedside leg bracket: bolted to the inner face of the right-hand divider at the
+   cab end of the hatch bay, so the bay stays fully open front and back ---- */
+{
+  const wx = bayW / 2, px = BSL_PX;
+  box('bedside_bracket_plate', 0.008, 0.20, 0.09, wx - 0.004, 0.46, POST_HOLE_Z, M.stove, carcass);
+  const armW = (wx - 0.008) - (px + 0.028);
+  for (const [tag, cy] of [['upper', 0.53], ['lower', 0.39]]) {
+    box('bedside_bracket_arm_' + tag, armW, 0.035, 0.04, px + 0.028 + armW / 2, cy, POST_HOLE_Z, M.stove, carcass);
+    box('bedside_bracket_collar_' + tag, 0.056, 0.035, 0.056, px, cy, POST_HOLE_Z, M.stove, carcass);
+  }
+  box('bedside_bracket_clamp_lever', 0.018, 0.075, 0.014, px - 0.012, 0.35, POST_HOLE_Z - 0.036, M.stove, carcass);
+  box('bedside_bracket_clamp_bolt', 0.014, 0.014, 0.03, px - 0.012, 0.39, POST_HOLE_Z - 0.03, M.steel, carcass);
 }
 
 /* ---- drawers ---- */
@@ -1344,7 +1361,7 @@ function panel(name, len, zCenter, y, parent, plain) {
       const sfx = Math.abs(x) < 1e-6 ? 'c' : (x < 0 ? 'l' : 'r');
       /* the bedside post stands in a socket over each drawer bay, so the orange
          panel's finger over each socket is broken open there */
-      const postGap = [SOCK_XL, SOCK_XR].some(sx => Math.abs(x - sx) < POST_HOLE_R + sw / 2);
+      const postGap = false;   /* the top-deck sockets are gone — the swivel leg rises through the hatch opening */
       if (isRear && postGap) {
         const clr = POST_HOLE_R + 0.006;
         const cuts = [POST_HOLE_Z - hingeA];
@@ -1411,13 +1428,7 @@ function panel(name, len, zCenter, y, parent, plain) {
       };
       for (const rx of [-1, 1]) {
         const px = rx * (bayW / 2 + sw2 / 2);
-        rearFill.push(vent(name + '_infill_' + (rx < 0 ? 'left' : 'right'), sw2, fl, px,
-                           [[(rx < 0 ? SOCK_XL : SOCK_XR) - px, POST_HOLE_Z - hingeA]]));
-        const lin = new THREE.Mesh(new THREE.CylinderGeometry(POST_HOLE_R, POST_HOLE_R, pT + 0.004, 24, 1, true), M.steel);
-        lin.name = name + '_post_liner_' + (rx < 0 ? 'left' : 'right');
-        lin.position.set(rx < 0 ? SOCK_XL : SOCK_XR, y, POST_HOLE_Z - hingeA);
-        g.add(lin);
-        rearFill.push(lin);
+        rearFill.push(vent(name + '_infill_' + (rx < 0 ? 'left' : 'right'), sw2, fl, px));
       }
       const bf = vent(name + '_infill_bay', bayW - 0.006, fl, 0);
       rearFill.push(bf); rearFillBay.push(bf);
@@ -1774,7 +1785,7 @@ function boredPad(w, d, hx, hz) {
   return geo;
 }
 const cushions = cushionSpec.map(s => {
-  const bore = s.tag === 'rear_a' || s.tag === 'rear_c';
+  const bore = false;   /* no post bores now the sockets are gone */
   const c = new THREE.Mesh(
     bore ? boredPad(s.w - PAD_GAP, s.len - PAD_GAP, (s.x < 0 ? SOCK_XL : SOCK_XR) - s.x, POST_HOLE_Z - s.z)
          : new THREE.BoxGeometry(s.w - PAD_GAP, cT, s.len - PAD_GAP),
@@ -2759,6 +2770,12 @@ if (loungeBtn) loungeBtn.addEventListener('click', () => {
 const hatchBtn = document.getElementById('hatch-toggle');
 if (hatchBtn) hatchBtn.addEventListener('click', () => {
   hatchOut = !hatchOut;
+  /* refitting the panel means the lounger table's leg has to come out of the bay first */
+  if (!hatchOut && anim.recline.target === 1 && !tableStowed) {
+    tableStowed = true;
+    if (leafMode) { leafStep = 3; leafFolded = true; }
+  }
+  applyTableMode();
   applyHatch();
   labels();
 });
@@ -3133,6 +3150,9 @@ function refreshSeatButtons() {
 }
 
 let tableStowed = false;   /* it starts set up, unfolded, in the seating bay */
+var bsSwivel = 1, swivelBtn = null;   /* bedside arm: 0 left · 0.5 aft · 1 right */
+const SWIVEL_NAMES = { 0: 'left', 0.5: 'to centre', 1: 'right' };
+const SWIVEL_NEXT = { 1: 0.5, 0.5: 0, 0: 1 };
 function applyTableMode() {
   /* the bed lands on the table — it can never be stowed while the bed is down.
      The lounger is the exception: only its own table goes away. */
@@ -3148,14 +3168,21 @@ function applyTableMode() {
      only the lounger table away: the main table stays set up under the seat. */
   const lounger = anim.recline.target === 1;
   const mainStowed = tableStowed && !lounger;
-  const bedside = lounger && !tableStowed;
+  const bedside = lounger && !tableStowed && hatchOut;   /* the leg stands in the hatch bay, so the panel must be out */
   /* the bed and the lounger both land on the table, so it must be whole — both
      halves down, nothing lifted off or sent to the bedside pose */
   const full = anim.bed.target === 0 || lounger;
   setTableStowed(mainStowed, bedside);
   anim.bside.target = bedside ? 1 : 0;   /* the lounger table comes out with the lounger */
   /* both sockets get shown: it lands in the left one, then moves across to the right */
-  anim.bspos.target = (bedside && anim.bside.p > 0.999) ? 1 : 0;
+  anim.bspos.target = (bedside && anim.bside.p > 0.999) ? bsSwivel : 0;
+  if (!swivelBtn) swivelBtn = document.getElementById('swivel-toggle');
+  if (swivelBtn) {
+    const show = bedside ? '' : 'none';
+    if (swivelBtn.style.display !== show) swivelBtn.style.display = show;
+    const l = 'Swing table ' + SWIVEL_NAMES[SWIVEL_NEXT[bsSwivel]];
+    if (swivelBtn.textContent !== l) swivelBtn.textContent = l;
+  }
   if (full) anim.leaf.target = 0;
   /* the leaves fold on their own button, and always as the table goes away */
   anim.fleaf.target = (leafMode && (mainStowed || leafFolded)) ? 1 : 0;
@@ -3181,9 +3208,15 @@ function cycleTable() {
     leafFolded = leafStep === 1 || leafStep === 3;
   }
   if (!tableStowed) anim.doors.target = 1;   /* nothing goes in through a shut door */
+  /* the lounger table's leg stands in the hatch bay, so setting it up takes the panel out */
+  if (anim.recline.target === 1 && !tableStowed && !hatchOut) { hatchOut = true; applyHatch(); labels(); }
   applyTableMode();
   updateVisBox();
   refreshTableLabels();
+}
+{
+  const sb = document.getElementById('swivel-toggle');
+  if (sb) sb.addEventListener('click', () => { bsSwivel = SWIVEL_NEXT[bsSwivel]; applyTableMode(); });
 }
 function refreshTableLabels() {
   const l = tableCycleLabel();
